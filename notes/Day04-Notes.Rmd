@@ -1,0 +1,134 @@
+---
+title: "Day04-Notes"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+
+## Bivariate Regression
+
+```{r}
+library(MASS)
+set.seed(1234)
+varX = 100
+varY = 400
+
+## covariance = how both variables are varying together
+covXY = 100
+covmatrix <- matrix(c(varX, covXY, covXY, varY), 2, 2)
+
+## 40 is the mean of X, 200 is the mean of Y
+population <- as.data.frame(mvrnorm(n = 1000, 
+                                     mu = c(40, 200), 
+                                     Sigma = covmatrix, 
+                                     empirical = TRUE))
+names(population) = c("X", "Y")
+```
+
+### Plot
+```{r}
+library(ggplot2)
+ggplot(population, aes(X, Y)) +
+  geom_point()
+```
+
+### Line of best fit
+```{r}
+poplm <- lm(Y ~ X, data = population)
+```
+
+### Let's take a sample and see what our relationship is...
+
+```{r}
+library(dplyr)
+samplesize <- 20
+sample.data <- population %>% sample_n(samplesize)
+lm(Y ~ X, data = sample.data)
+```
+
+```{r}
+library(broom)
+modeloutput <- tidy(lm(Y ~ X, data = sample.data))
+
+for(i in 2:100) modeloutput <- lm(Y ~ X, data = population %>% sample_n(samplesize)) %>% tidy %>% bind_rows(modeloutput)
+```
+
+```{r}
+modeloutput %>% filter(term == "X") %>% ggplot(aes(estimate)) +
+  geom_histogram()
+```
+
+```{r}
+library(stargazer)
+modeloutput %>% filter(term == "X") %>% stargazer(type = "text")
+```
+
+## New Data Generating Process
+
+```{r}
+varX = 100
+varerror = 400
+
+## if there is covariance between error and X, sample coefficient cannot be a good estimate of relationship.
+covXerror = 0
+covmatrix2 <- matrix(c(varX, covXerror, covXerror, varerror), 2, 2)
+
+## mean of error = 0
+Xe <- as.data.frame(mvrnorm(n = 1000, 
+                                     mu = c(40, 0), 
+                                     Sigma = covmatrix2, 
+                                     empirical = TRUE))
+names(Xe) = c("X", "error")
+
+beta0 <- 120
+beta1 <- 1
+
+## make a Y variable with Y = beta0 + beta1*X + error
+Xe <-  Xe %>% mutate(Y = beta0 + beta1*X + error)
+```
+
+### Plot
+```{r}
+library(ggplot2)
+ggplot(Xe, aes(X, Y)) +
+  geom_point()
+```
+
+### Line of best fit
+```{r}
+newlm <- lm(Y ~ X, data = Xe)
+```
+
+### Let's take a sample and see what our relationship is...
+
+```{r}
+samplesize2 <- 1000
+sample.data2 <- Xe %>% sample_n(samplesize2)
+lm(Y ~ X, data = sample.data2)
+```
+
+```{r}
+modeloutput2 <- tidy(lm(Y ~ X, data = sample.data2))
+
+for(i in 2:1000) modeloutput2 <- lm(Y ~ X, data = Xe %>% sample_n(samplesize)) %>% tidy %>% bind_rows(modeloutput2)
+```
+
+```{r}
+modeloutput2 %>% filter(term == "X") %>% ggplot(aes(estimate)) +
+  geom_histogram()
+```
+
+```{r}
+modeloutput2 %>% filter(term == "X") %>% stargazer(type = "text")
+```
+
+### How can we move the distribution either to the right or to the left?
+
+**1.** Change the Covariance (make an error no longer a "white noise")
+**2.** Just change the true mean
+
+### How can we change the spread of the ditribution
+
+**1.** Change the sample size(n)
+**2.** Change the variance of population: variance of error and X

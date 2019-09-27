@@ -1,0 +1,38 @@
+---
+title: "ECON329_hw1"
+author: Colin Pi
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##1. 
+
+```{r, eval=FALSE}
+prop.test(8,20,0.5)
+```
+
+I find that `prop.test` can be used to compared whether the probability of the success in a sample (0.4) equals to given probability(0.5). The p-value of the test result is 0.5023, noting that there is not significant evidence to reject the claim that Noam is not of 50% shooter.
+
+##2. 
+
+```{r, eval=FALSE}
+prop.test(x = c(8,0), n = c(15,13), correct=FALSE)
+```
+
+`prop.test` is used for testing that the probabilities of success in multiple groups are the same, which is appropriate for the problem we have to figure out (% of Titus = % of Shaq). There is a significant evidence to reject the claim that the shooting rate of Titus is same as that of Shaq (p-value = 0.0018 < 0.05)
+
+##3.
+
+```{r, eval=FALSE}
+library(dplyr)
+class <- read.csv("Documents/2017-18/ECON329/hw1.csv")
+morning <- class %>% filter(Class == "Morning")
+afternoon <- class %>% filter(Class == "Afternoon")
+t.test(morning$Percentage, afternoon$Percentage)
+```
+
+In that we are comparing the averages of shooting rate of the two classes, I found out that two sample t-test is an appropriate way to assess whether the means of the two classes are significantly different. The test result tells us that there is a mild evidence to reject the claim that the morning and afternoon classes have a different average values (p-value = 0.094, which is in between 0.05 to 0.1)
+

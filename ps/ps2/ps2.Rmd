@@ -1,0 +1,243 @@
+---
+title: "Problem Set 2"
+subtitle: "ECON329"
+author: "Colin Pi"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(googlesheets)
+library(stargazer)
+library(gridExtra)
+```
+
+##Qustion 1
+
+**(a)**
+
+```{r}
+n <- 43
+sample_mean <- 33.1/45
+sample_std <- 7.4/45
+pop_mean <- 0.78
+t_stat <- (sample_mean - pop_mean)/(sample_std/sqrt(n))
+p_value1 <- 2*pt(-abs(t_stat),df=n-1)
+```
+
+***H***~0~: the averages score equals to 78% ($\mu$ = 0.78)
+
+***H***~1~: the averages score does not equal to 78% ($\mu$ $\neq$ 0.78)
+
+There is no significant evidence to reject the hypothesis that the average score of the sample does not equal to 78% (p-value = `r p_value1` > 0.05)
+
+**(b)**
+
+```{r}
+error <- qt(0.995,df=n-2)*0.159
+lowerBound <- 0.073 - error
+upperBound <- 0.073 + error
+```
+
+The 99% confidence interval is `r round(lowerBound, digits=3)` to `r round(upperBound, digits=3)`
+
+##Question 2
+
+```{r}
+food <- read.csv("~/Documents/2017-18/ECON329/ps/ps2/FoodExpenditures.csv")
+```
+
+**(a)**
+
+```{r, fig.align='center'}
+food %>% ggplot(aes(x = TOTALEXP, y=FOODEXP)) +
+  geom_point() +
+  labs(title="Total Expenditures v. Food Expenditures",x="Food Expenditures (Rupee)",y="Total Expenditures (Rupee)")
+```
+
+**(b)**
+
+In that we can observe a non-linear pattern in scatterplot, it violates assumption 1 (linear-in-parameters). Also the model is not likely to follow homoscedasity assumption in that variability of the error gets bigger as x value increases (we can observe a fanning patter in residual plot)
+
+```{r, fig.align = 'center'}
+ggplot(lm(FOODEXP~TOTALEXP, data = food)) + 
+  geom_point(aes(x=.fitted, y=.resid)) + 
+  geom_hline(yintercept=0, col="red", linetype="dashed") +
+  labs(title = "Residual vs Fitted Plot", x="Fitted Values", y = "Residuals")
+```
+
+**(c)**
+
+```{r, results='asis'}
+food.lm <- lm(FOODEXP ~ TOTALEXP, data = food)
+stargazer(food.lm, type = "html")
+```
+
+We expect to see `r round(food.lm$coefficients[2], digits = 3)` rupee increase in food expenditure of Indian households for every 1 ruppee increase in their total expenditure (with standard error = 0.078). Also the model says that food expenditure is around 94 rupees when there is no expenditure made by a household (with standard error = 50.856). R^2^ value tells us that the about 37% of variability in y is explained by the model.   
+
+##Question 3
+
+```{r}
+CountryLevelSheet <- suppressMessages(gs_url("https://docs.google.com/spreadsheets/d/163zuhH_nUXtsDfnnrzuDxJOj4D3Ago1ldEA960JZPmE/"))
+CountryLevelData <- suppressMessages(gs_read(CountryLevelSheet))
+```
+
+**(a)**
+
+```{r, results='asis'}
+data_2000s <- CountryLevelData %>% filter(year %in% c(2000:2010)) %>% arrange(year)
+life_2000s.lm <- lm(lifeExp ~ gdpPercap, data = data_2000s)
+stargazer(life_2000s.lm, type = "html")
+association_1 <- round(life_2000s.lm$coefficients[2], digits = 3)
+```
+
+We expect to see approximately `r association_1` year increase in life expectancy for every $1 increase in GDP per capita (with standard error = 0.00004). We can see that the expected life expectancy of a person is 58.94 years where GDP per capita is 0 (with standard error = 0.714). The R^2^ tells us that 46% of the variability of y is explained by the model. 
+
+
+**(b)**
+
+```{r, fig.align='center'}
+ggplot(lm(lifeExp~gdpPercap, data = data_2000s)) + 
+  geom_point(aes(x=.fitted, y=.resid)) + 
+  geom_hline(yintercept=0, col="red", linetype="dashed") +
+  labs(title = "Residual vs Fitted Plot", x="Fitted Values", y = "Residuals")
+```
+
+Like in the case of Question 2-(a), we can observe non-linear pattern in the scatterplot, so it goes against linear-in-parameters assumption. Also, we can assume that the model without transformation violates homoscedasity assumption as variablity of error may increase as x gets either smaller or bigger (variability of error is smallest when x is in the middle). Moreover, the mean of the residual may not be equal to 0 in any x-value in that residuals are seriously skewed to the right when x<10000 and skewed to the left when x>10000.
+
+##Question 4
+
+```{r, results='asis', fig.align='center'}
+data_2000s %>% ggplot(aes(x = gdpPercap, y = lifeExp)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  scale_x_log10() +
+  labs(title="Life Expectancy v. GDP per Capita (2000-2010)",x="GDP per Capita (USD, in log scale)",y="Life Expectancy (year)")
+life_2000s_log.lm <- lm(lifeExp ~ log(gdpPercap), data = data_2000s)
+stargazer(life_2000s_log.lm, type = "html")
+association_2 <- round(life_2000s_log.lm$coefficients[2]*0.01, digits = 3)
+```
+
+As the variablity in x is too large relative to that of y, I performed log transformation only on x variable (GDP per capita). The model exhibits that we expect to see approximately `r association_2` years increase in life expectancy for every 1% increase in GDP per capita (with standard error = 0.311). The constant value tells us that life expectancy of a person where GDP per capita is 0 is around 3.108 years (with standard error = 2.686, which means statistically insiginificant). The R^2^ value shows that about 66.83% percent of the variability in y is explained by the model. 
+
+##Challenge Problem
+
+```{r, fig.align='center'}
+ggplot(lm(lifeExp~log(gdpPercap), data = data_2000s), aes(color = data_2000s$continent))+ 
+  geom_point(aes(x=.fitted, y=.resid)) + 
+  geom_hline(yintercept=0, col="red", linetype="dashed") +
+  labs(title = "Residual vs Fitted Plot", x="Fitted Values", y = "Residuals", color = "Continent")
+```
+
+The model in general does not a good job in predicting African countries. Asian countries are relatively well predicted based on the model. 
+
+##Question 5
+
+**(a)**
+
+```{r, fig.align='center'}
+usa <- CountryLevelData %>% filter(country == "United States")
+usa %>% ggplot(aes(x = year, y = gdpPercap)) + 
+  geom_point() + 
+  labs(title="GDP per Capita v. Year (USA)",x="Year",y="GDP per Capita (USD)")
+```
+
+**(b)**
+
+```{r, results='asis', fig.align='center'}
+usa %>% ggplot(aes(x = year, y = log(gdpPercap))) + 
+  geom_point() + 
+  labs(title="GDP per Capita v. Year (USA)",x="Year",y="Growth (Growth in 1952 = 1, in log scale)")
+growth.lm <- lm(log(gdpPercap)~year, data = usa)
+stargazer(growth.lm, type = "html")
+growth_rate <- exp(growth.lm$coefficients[2])-1
+```
+
+log(y~1~) = $\beta$~2~X + $\beta$~1~ \newline
+
+log(y~2~) = $\beta$~2~(X+1) + $\beta$~1~\newline
+
+log(y~2~) - log(y~1~) = $\beta$~2~(X+1) + $\beta$~1~ - $\beta$~2~X - $\beta$~1~ \newline
+
+= $\beta$~2~ = log($\frac{y~2~}{y~1~}$) \newline
+
+$\frac{y~2~}{y~1~}$ = e^$\beta$~2~^ \newline
+
+Therefore, the percentage change of y in every year = (e^$\beta$~2~^ -1)*100 \newline
+
+Growth rate = `r growth_rate` $\approx$ `r round(growth_rate*100, digits = 2)`%
+
+**(c)**
+
+```{r}
+interval_2 <- confint(growth.lm)
+lowerBound_2 <- exp(interval_2[2,1]) - 1
+upperBound_2 <- exp(interval_2[2,2]) - 1
+```
+
+The 95% confidence interval is `r lowerBound_2` ($\approx$ `r round(lowerBound_2*100, digits = 2)`%) to `r upperBound_2` ($\approx$ `r round(upperBound_2*100, digits = 2)`%)
+
+##Question 6
+
+**(a)**
+
+```{r, fig.align='center'}
+CountryLevelData %>% ggplot(aes(x = year, y = gdpPercap)) + 
+  geom_point() +
+  labs(title="GDP per capita (1952-2007)",x="Year",y="GDP per Capita (USD)")
+```
+
+There are six observations that deviate from the general pattern.
+
+```{r}
+CountryLevelData %>% arrange(desc(gdpPercap))
+```
+
+GDP per capita of Kuwait from 1952 to 1977 are the six outliers. So I decided to remove those points and redrawed the scatterplot.
+
+```{r, fig.align='center'}
+CountryLevelData1 <- CountryLevelData %>% filter(gdpPercap < 59265)
+
+CountryLevelData1 %>% ggplot(aes(x = year, y = gdpPercap)) + 
+  geom_point() +
+  labs(title="GDP per capita (1952-2007)",x="Year",y="GDP per Capita (USD)")
+```
+
+Since gdp is exponentially growing as year increases, I decided to log transform gdpPercap.
+
+```{r, fig.align='center'}
+CountryLevelData1 %>% ggplot(aes(x = year, y = gdpPercap)) + 
+  geom_point() +
+  scale_y_log10() +
+  labs(title="GDP per capita (1952-2007)",x="Year",y="GDP per Capita (USD, in log scale)")
+```
+
+**(b)**
+
+```{r, results='asis', fig.align='center'}
+growth.lm2 <- lm(log(gdpPercap)~year, data = CountryLevelData1)
+stargazer(growth.lm2, type = "html")
+growth_rate_world <- exp(growth.lm2$coefficients[2]) - 1
+CountryLevelData1 %>% ggplot(aes(x = year, y = gdpPercap)) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_y_log10() +
+  labs(title="GDP per capita (1952-2007)",x="Year",y="GDP per Capita (USD, in log scale)")
+```
+
+Growth rate estimate = `r growth_rate_world` $\approx$ `r round(growth_rate_world*100, digits = 2)`% 
+
+**(c)**
+
+```{r}
+interval_3 <- confint(growth.lm2)
+lowerBound_3 <- exp(interval_3[2,1]) - 1
+upperBound_3 <- exp(interval_3[2,2]) - 1
+```
+
+The 95% confidence interval is `r lowerBound_3` ($\approx$ `r round(lowerBound_3*100, digits = 2)`%) to `r upperBound_3` ($\approx$ `r round(upperBound_3*100, digits = 2)`%)

@@ -1,0 +1,82 @@
+---
+title: "Day10-Notes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Salary Exercise (table9_1)
+
+```{r}
+salary <- read.csv("~/Documents/2017-18/ECON329/notes/Day10-files/Table9_1.csv")
+salary.lm <- lm(Salary ~ D2 + D3, data = salary)
+
+##R takes the value alphabetically coming first as default
+salary.lm2 <- lm(Salary ~ Region, data = salary)
+
+salary$Region0 <- relevel(salary$Region, "Others")
+salary.lm3 <- lm(Salary ~ Region0, data = salary)
+
+## include Spending variable
+salary.lm4 <- lm(Salary ~ Region0 + Spending, data = salary)
+```
+
+## Interactions
+
+```{r}
+salary.lm5 <- lm(Salary ~ Spending*Region0, data = salary)
+```
+
+## St Fred
+
+```{r}
+library(dplyr)
+library(stargazer)
+savings <- read.csv("~/Documents/2017-18/ECON329/notes/Day10-files/SavingsDataFred.csv") %>% filter(Year < 1996) %>% mutate(year_range = ifelse(Year <= 1981,"70-81","82-95") %>% as.factor())
+relevel(savings$year_range, ref = "82-95")
+savings.lm1 <- lm(Savings ~ DPI+year_range, data = savings)
+savings.lm2 <- lm(Savings ~ DPI*year_range, data = savings)
+
+stargazer(savings.lm1, savings.lm2, type="text")
+```
+
+```{r}
+library(ggplot2)
+ggplot(data=savings, aes(x=DPI, y=Savings, color=year_range)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Savings v. DPI", color="Period") 
+```
+
+## Test whether both coefficients on time period are necessary
+
+```{r}
+## fit the data without time period
+savings.lm3 <- lm(Savings ~ DPI, data = savings)
+stargazer(savings.lm2, savings.lm3, type="text")
+
+## get the "relative" f-stat
+RSS.r <- sum((savings.lm3$residuals)^2)
+RSS.ur <- sum((savings.lm2$residuals)^2)
+k_1 <- 2 ## numbers of predictors in restricted model
+n <- 26
+k_2 <- 4 ## numbers of predictors in unrestricted model
+f_stat <- ((RSS.r - RSS.ur)/(k_2-k_1))/(RSS.ur/(n-k_2))
+1-pf(f_stat,2,22)
+
+## Using R^2
+R2.u <- summary(savings.lm2)$r.squared
+R2.r <- summary(savings.lm3)$r.squared
+((R2.u-R2.r)/k_1)/((1-R2.u)/(n-k_2))
+
+anova(savings.lm3, savings.lm2)
+
+## use car
+library(car)
+linearHypothesis(savings.lm2, c("year_range82-95 = 0", "DPI:year_range82-95 = 0"))
+```
+
+
+

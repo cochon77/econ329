@@ -1,0 +1,145 @@
+---
+title: "Day05-Notes"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+
+
+# Review of Day 04
+
+$$Y = \beta_1 + \beta_2*X + error$$
+
+$$error \sim N(0, \sigma^2)$$
+
+$$cov(X, error) = 0$$
+
+* The Sample Regression Function obtained by OLS is an unbiased estimator of the Population Regression Function
+* The variance of $\widehat{\beta_2}$ depends on the variance of the error terms, the variance of X, and the sample size.
+* The $\widehat{\beta_2}$ is normal under the right conditions.
+
+## Let's generate some population data
+
+```{r}
+library(MASS)
+library(tidyverse)
+
+set.seed(98765)
+varX <- 100; varError <- 400
+Sigmamatrix <- matrix(c(varX, 0, 0, varError), 2, 2)
+population <- mvrnorm(n = 1000, mu = c(40, 0), Sigma = Sigmamatrix, 
+                      empirical = TRUE) %>% data.frame()
+names(population) <- c("X", "error")
+ 
+beta1 <- 100; beta2 <- 1
+population <- population %>% mutate(Y = beta1 + beta2*X + error)
+```
+
+## Let's plot our population data.
+```{r}
+population %>% ggplot(aes(X, Y)) + 
+  geom_point() +
+  geom_smooth(method ='lm', se = FALSE, fullrange = TRUE) +
+  expand_limits(x = 0) +
+  labs(title = "Population Data") + 
+  theme_grey(base_size = 24)
+```
+
+## Let's summarize our data in a table
+```{r}
+library(stargazer)
+stargazer(population, type = "text", digits = 1)
+```
+
+## Can we predict the sampling distribution of $\widehat{\beta_2}$?
+
+Theory suggests it should be approximately normally distributed with a mean of $\beta_2$ and variance $\frac{\sigma^2}{n * var(X)}$.
+
+## Let's run a simulation to see
+```{r}
+sampleSize <- 25
+library(broom)
+modeloutput <- lm(Y ~ X, data = population %>% sample_n(sampleSize)) %>% tidy
+
+for(i in 2:100) modeloutput <- lm(Y ~ X, 
+                                   data = population %>% sample_n(sampleSize)) %>% 
+  tidy %>% 
+  bind_rows(modeloutput)
+```
+
+```{r}
+modeloutput %>% filter(term == "X") %>% ggplot(aes(estimate)) +
+  geom_histogram(bins = 10)
+```
+
+```{r}
+modeloutput %>% filter(term == "X") %>% stargazer(type = "text")
+```
+
+```{r}
+sqrt(varError/(sampleSize*varX))
+```
+
+## Let's look at a particular sample
+
+```{r}
+set.seed(20180410) 
+sampleData <- population %>% sample_n(sampleSize)
+stargazer(sampleData, type = "text")
+```
+
+and estimate a sample regression function
+```{r}
+(sampleLm <- lm(Y ~ X, data = sampleData))
+```
+
+but this isn't all of the information available after we run a regression
+```{r}
+names(sampleLm)
+```
+
+Running the `summary` function on the `lm` output gives us even more information.
+
+```{r}
+(sampleLmSummary <- summary(sampleLm))
+names(sampleLmSummary)
+```
+
+The `stargazer` package can also create nicely formatted tables of regression output
+```{r}
+stargazer(sampleLm, type = "text")
+```
+
+and can even easily include multiple regressions!
+
+```{r}
+set.seed(123)
+sampleData2 <- population %>% sample_n(sampleSize)
+sampleLm2 <- lm(Y ~ X, data = sampleData2)
+```
+
+
+# What do these numbers mean and where do they come from?
+
+### Can you reproduce the `(0.413)` standard error of the X coefficient?
+
+```{r}
+sqrt(var(sampleLm$residuals)/((sampleSize * var(sampleData$X))))
+df <- sampleSize - 2
+sqrt(var(sampleLm$residuals)/((df * var(sampleData$X))))
+```
+
+### Can you reproduce the `14.150` Residual Std Error value?
+
+```{r}
+sqrt(sum(sampleLm$residuals^2)/df)
+```
+
+
+### Can you reproduce the `0.400` R^2 value?
+
+```{r}
+1 - var(sampleLm$residuals)/var(sampleData$Y)
+```

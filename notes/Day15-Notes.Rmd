@@ -1,0 +1,91 @@
+---
+title: "Day14-Notes"
+author: "Colin Pi"
+date: "5/15/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+one group: Yes 10 out of 110
+other group: Yes 40 out of 120
+
+#### Use Z-test
+
+z = (p1-p2)/sqrt((p1+p2)X(1-(p1+p2))X(1/110+1/120))
+
+```{r}
+p1 <- 10/110
+p2 <-40/120
+p <- 50/230
+
+
+var <- p*(1-p)*(1/110+1/120)
+
+z <- (p2-p1)/sqrt(var)
+```
+
+#### Use Prop-test
+
+```{r}
+prop.test(x = c(10, 40), n = c(110, 120))
+```
+
+#### Use Chi-square test
+
+```{r}
+smoke <- factor(rep(c("no","yes"), c(110,120)))
+cancer <- factor(c(rep(c("no","yes"), c(100,10)),
+                   rep(c("no","yes"), c(80,40))))
+
+chisq.test(smoke,cancer)
+```
+
+#### Use Regressions
+
+```{r}
+cancer.num <- as.numeric(cancer)-1
+smoke.num <- as.numeric(smoke)-1
+cancer.lm <- lm(cancer.num ~ smoke.num)
+summary(cancer.lm)
+
+plot(jitter(cancer.num)~jitter(smoke.num))
+abline(cancer.lm)
+
+individuals %>% ggplot(aes(x = smoke, y = cancer))+
+  geom_jitter() +
+  geom_smooth(method = "lm")
+
+individuals <- data.frame(smoke = smoke.num, cancer = cancer.num)
+```
+
+#### logit
+
+```{r}
+cancer.logit <- glm(cancer ~ smoke, , data = individuals, family = binomial)
+summary(cancer.logit)
+
+pnon <- 1/(1+exp(-(-2.3026)))
+psmoke <- 1/(1+exp(-(-2.3026+1.6094)))
+pnon
+psmoke
+oddsnon <- exp(-2.3026) ## out of non smokers (smoker = 0), how many of them get cancer
+oddssmoke <- exp(-2.3026+1.6094) ## out of smokers (smoker = 1), how many of them get cancer
+oddsnon
+oddssmoke
+preds <- predict(cancer.logit, type = "response")
+```
+
+odds ratio of getting cancer is exp(beta_smoke) times higher when individual is smoking
+
+##Mroz
+
+```{r}
+library(car)
+Mroz
+mroz.mod <- glm(lfp ~ k5 + k618 + age + wc + hc + inc, data =Mroz, family = binomial)
+```
+
+

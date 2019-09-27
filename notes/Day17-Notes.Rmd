@@ -1,0 +1,48 @@
+---
+title: "Day17-Notes"
+author: "Colin Pi"
+date: "5/22/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Specification Test
+
+Ramsey's RESET Test (p-479), another way of doing F-test 
+
+```{r}
+library(lmtest)
+x <- c(1:30)
+y1 <- 1 + x + x^2 + rnorm(30)
+y2 <- 1 + x + rnorm(30)
+```
+
+### Test whether including x^2 terms in the model makes it better
+
+```{r}
+resettest(y1 ~ x, power = 2, type = "regressor")
+```
+
+Including the x^2 makes model better (p-value is small)
+
+```{r}
+resettest(y1 ~ x, power = 3, type = "regressor")
+```
+
+But the test result does not tell whether inclusion of which power makes the model better
+
+### Overfitting
+
+```{r}
+resettest(y2 ~ x, power = 2, type = "regressor")
+```
+
+Inclusion of x^2 does not make the model better (p-value is large)
+
+### Nested v. Non-nested Models
+
+Davidson-MacKinnon J Test
+

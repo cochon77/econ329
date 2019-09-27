@@ -1,0 +1,47 @@
+---
+title: "Day12-Notes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+table_11_3 <- read_excel("~/Documents/2017-18/ECON329/notes/Day12-files/Table 11_3.xls", skip = 8)
+data_1 <- table_11_3[1:13,]
+data_2 <- table_11_3[30:18,]
+
+lm1 <- lm(RY ~ RX, data = data_1)
+lm2 <- lm(RY ~ RX, data = data_2)
+lm0 <- lm(RY ~ RX, data = table_11_3)
+
+df <- 13-2
+
+f_stat <- (sum(lm2$residuals^2)/df)/(sum(lm1$residuals^2)/df)
+1-pf(f_stat,4,df)
+```
+
+## lm test
+
+```{r}
+library(lmtest)
+gqtest(lm0, fraction = 4)
+```
+
+## Heteroscedasity consistent covariance matrix
+
+```{r}
+table_11_11 <- read.csv("~/Documents/2017-18/ECON329/notes/Day12-files/Example11-11.csv")
+lm4 <- lm(log(salary) ~ log(income) + log(propvalue), data = table_11_11)
+summary(lm4)
+
+library(car)
+lm4_2 <- coeftest(lm4, hccm(lm4))
+
+library(stargazer)
+stargazer(lm4_2, lm4, type = "text")
+```
+
+

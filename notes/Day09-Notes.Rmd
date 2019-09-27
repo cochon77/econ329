@@ -1,0 +1,71 @@
+---
+title: "Day09-Notes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Day08-data
+
+```{r}
+library(readxl)
+day08 <- read_excel("~/Documents/2017-18/ECON329/notes/Day09-data.xlsx")
+day08_log.lm <- lm(log(Y) ~ log(X2) + log(X3), data = day08)
+summary(day08_log.lm)
+```
+
+```{r}
+F <- (0.9642/2)/((1-0.9642)/48)
+p_value <- 1-pf(F,2,48)
+```
+
+
+```{r}
+day08_log.lm2 <- lm(log(Y) ~ log(X2), data = day08)
+summary(day08_log.lm2)
+```
+
+F-stat = t-stat^2 (when it comes to one variable SLR)
+
+## Is coefficients are equal to each other
+
+t-stat = $\frac{(\widehat{\beta} - \widehat{\gamma}) - (\beta - \gamma)}{se(\widehat{\beta} - \widehat{\gamma})}$
+se($\widehat{\beta} - \widehat{\gamma}$) = $\sqrt{var(\widehat{\beta}) + var(\widehat{\gamma}) - 2cov(\widehat{\beta},\widehat{\gamma})}$
+
+```{r}
+obs_sum <- day08_log.lm$coefficients[2] - day08_log.lm$coefficients[3]
+
+var_x2 <- vcov(day08_log.lm)["log(X2)","log(X2)"]
+var_x3 <- vcov(day08_log.lm)["log(X3)","log(X3)"]
+cov_x2_x3 <- vcov(day08_log.lm)["log(X2)","log(X2)"]
+t_stat <- obs_sum / sqrt(var_x2+var_x3-2*cov_x2_x3)
+```
+
+## Is coefficients sum up to 1
+
+$\beta + \gamma$ = 1
+
+t-stat = $\frac{(\widehat{\beta} + \widehat{\gamma}) - (\beta + \gamma)}{se(\widehat{\beta} + \widehat{\gamma})}$
+se($\widehat{\beta} + \widehat{\gamma}$) = $\sqrt{var(\widehat{\beta}) + var(\widehat{\gamma}) + 2cov(\widehat{\beta},\widehat{\gamma})}$
+
+
+```{r}
+obs_sum_2 <- coef(day08_log.lm)["log(X2)"] + coef(day08_log.lm)["log(X3)"]
+
+VCOV <- vcov(day08_log.lm)
+
+seBetas <- sqrt(VCOV["log(X2)", "log(X2)"] + 
+  VCOV["log(X3)", "log(X3)"] +
+  2*VCOV["log(X2)", "log(X3)"])
+
+(obs_sum_2 - 1) / seBetas
+```
+
+## Residual Sum
+
+```{r}
+sum(day08_log.lm$residuals^2)
+```
+

@@ -1,0 +1,124 @@
+---
+title: "Day03-Notes"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+## Important Statistical Distributions
+
+* z (normal)
+* t (almost normal)
+* $\chi^2$ (sum of squared normal)
+
+### Central Limit Theorem
+
+If we know the population mean and variance... then we predict that the sample mean will be normally distributed.
+
+If the population has a mean of 144 and a variance of 36, what will the sample mean distribution tend to look like if the sample size is 100 and we took 400 samples?
+
+```{r}
+library(MASS)
+set.seed(1239876)
+population <- data.frame(X = mvrnorm(n = 10000, 
+                                     mu = 144, 
+                                     Sigma = 36, 
+                                     empirical = TRUE))
+```
+
+```{r}
+library(stargazer)
+stargazer(population, type = "text")
+```
+
+```{r}
+library(ggplot2)
+ggplot(population, aes(X)) + geom_histogram(binwidth = 2)
+```
+
+
+Let's run a simulation...
+
+```{r}
+library(dplyr)
+samplesize = 25
+mysample <- sample_n(population, samplesize, replace = TRUE) 
+mysample %>% summarize(mean(X))
+mysample %>% summarize(sd(X))
+```
+
+```{r}
+num_sims <- 100
+
+sim.out <- population %>% sample_n(samplesize) %>% 
+  summarise(xbar = mean(X), sdhat = sd(X))
+
+for (i in 2:num_sims) {
+sim.out <- population %>% sample_n(samplesize) %>% 
+  summarise(xbar = mean(X), sdhat = sd(X)) %>% bind_rows(sim.out)
+}
+```
+
+```{r}
+stargazer(sim.out, type = "text")
+```
+
+```{r}
+sim.out %>% ggplot(aes(xbar)) + 
+  geom_histogram(aes(y = ..density..), bins = 20) +
+  stat_function(fun = dnorm, 
+                args = list(mean = 144, sd = 6/sqrt(samplesize)))
+``` 
+
+
+## Hypothesis Testing
+
+Imagine testing the hypothesis that the true population mean was 144. How would we conduct this hypothesis test? 
+
+$$\frac{\bar{x} - \mu}{\widehat{\sigma_\bar{x}}} = ?$$
+
+```{r}
+sim.out <- sim.out %>% 
+  mutate(tstat = (xbar - 144)/(sdhat/sqrt(samplesize)))
+
+sim.out %>% ggplot(aes(tstat)) + 
+  geom_histogram(aes(y = ..density..), bins = 20) +
+  stat_function(fun = dt, 
+                args = list(df = samplesize - 1))
+```
+
+
+## Confidence Intervals
+
+```{r}
+my.alpha <- 0.05
+test.df <- samplesize - 1
+tstat.CI <- qt(my.alpha/2, test.df)
+
+sim.out <- sim.out %>% 
+  mutate(run = row_number(),
+         low = xbar + tstat.CI*sdhat/sqrt(samplesize),
+         high = xbar - tstat.CI*sdhat/sqrt(samplesize))
+
+ggplot(sim.out, aes(run, xbar)) + 
+  geom_point() + 
+  geom_segment(aes(x = run, y = low, 
+                   xend = run, yend = high))
+```
+
+**CI of each sample is different because standard error of each sample varies (sdhat/sqrt(samplesize)).**
+
+What if we want to make the CIs that don't include the true value a different color?
+
+```{r}
+sim.out <- sim.out %>% 
+  mutate(Includes = if_else(144 > low & 144 < high, "yes", "no"))
+
+ggplot(sim.out, aes(run, xbar)) + 
+  geom_point() + 
+  geom_hline(yintercept = 144) +
+  geom_segment(aes(x = run, y = low, 
+                   xend = run, yend = high, color = Includes))
+```
+
+

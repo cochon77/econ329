@@ -1,0 +1,145 @@
+---
+title: "Problem Set #1"
+subtitle: "ECON 329"
+author: Colin Pi
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(googlesheets)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+CountryLevelSheet <- gs_url("https://docs.google.com/spreadsheets/d/163zuhH_nUXtsDfnnrzuDxJOj4D3Ago1ldEA960JZPmE/")
+CountryLevelData <- gs_read(CountryLevelSheet)
+```
+
+##1.
+
+```{r}
+avg_2007 <- CountryLevelData %>% filter(year == 2007) %>% group_by(continent) %>% summarize(average = mean(pop*gdpPercap, na.rm = TRUE))
+knitr::kable(avg_2007)
+```
+
+##2.
+
+***H***~0~: the averages of GDP in Europe and America are equal ($\mu$~Europe~ = $\mu$~America~)
+
+***H***~1~: the averages of GDP in Europe and America are not equal ($\mu$~Europe~ $\neq$ $\mu$~America~)
+
+###1957
+
+```{r}
+data_1957 <- CountryLevelData %>% mutate(totalGdp = gdpPercap*pop) %>% filter(year == 1957 & continent %in% c("Europe","Americas"))
+test1 <- t.test(totalGdp ~ continent, data = data_1957)
+test1
+```
+
+Based on the two samples t-test, we can see that there is not a significant evidence to reject the null hypothesis that the averages of GDP of both continents are the same in 1957 (p-value = 0.7731).
+
+###2007
+
+```{r}
+data_2007 <- CountryLevelData %>% mutate(totalGdp = gdpPercap*pop) %>% filter(year == 2007 & continent %in% c("Europe","Americas"))
+test2 <- t.test(totalGdp ~ continent, data = data_2007)
+test2
+```
+
+Based on the two samples t-test, we can see that there is not a significant evidence to reject the null hypothesis that the averages of GDP of both continents are the same in 2007 (p-value = 0.5966)
+
+##3.
+
+```{r, fig.align = "center"}
+data_1957_all <- CountryLevelData %>% filter(year == 1957)
+plot1 <- ggplot(data = data_1957_all) +
+  geom_point(aes(x = gdpPercap, y = lifeExp)) +
+  scale_x_log10() +
+  labs(title="1957",x="GDP per Capita (in USD)",y="Life Expectancy (in year)")
+
+data_2007_all <- CountryLevelData %>% filter(year == 2007)
+plot2 <- ggplot(data = data_2007_all) +
+  geom_point(aes(x = gdpPercap, y = lifeExp)) +
+  scale_x_log10() +
+  labs(title="2007",x="GDP per Capita (in USD)",y="Life Expectancy (in year)")
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+##4.
+
+```{r}
+avg_2002 <- CountryLevelData %>% filter(year == 2002) %>% group_by(continent) %>% summarize(TotalPop = sum(as.numeric(pop), na.rm = TRUE), TotalGDP = sum(gdpPercap*as.numeric(pop), na.rm = TRUE)) %>% mutate(gdpPercap = TotalGDP / TotalPop)
+knitr::kable(avg_2002)
+```
+
+##5.
+
+***H***~0~: the coin is fair (Pr = .5)
+
+***H***~1~: the coin is not fair (Pr $\neq$ .5)
+
+```{r}
+flips = 100
+heads = 65
+p0 = .5
+
+coin <- binom.test(heads, flips, p0)
+coin
+```
+
+Based on the exact binomial test, we can see that there is a significant evidence to reject the null hypothesis that coin is fair (p-value = `r coin$p.value`).
+
+##6.
+
+***H***~0~: the dice is fair (Pr of each number's coming out = 1/6)
+
+***H***~1~: the dice is not fair (Pr of each number's coming out $\neq$ 1/6)
+
+```{r}
+obs <- c(19,32,36,26,42,25)
+dice <- chisq.test(obs)
+dice
+```
+
+The chi-square test for indepdence tells us that there is an enough evidence to reject the null hypothesis that the probability of each number's coming out equals to 1/6 (p-value = `r dice$p.value`). 
+
+##7.
+
+```{r}
+n <- 80
+sampleMean <- 44500
+populationMean <- 50000
+std <- 10500
+t_stat <- (sampleMean - populationMean)/(std/sqrt(n))
+p_value <- 2*pt(-abs(t_stat),df=n-1)
+```
+
+***H***~0~: the sample mean of the income in Northfield equals to population mean ($\bar{X}$~Northfield~ = $\mu$~Northfield~)
+
+***H***~1~: the sample mean of the income in Northfield does not equal to population mean ($\bar{X}$~Northfield~ $\neq$ $\mu$~Northfield~)
+
+One sample t-test result shows that there exists a significant evidence to reject the null hypothesis that sample mean equals to population mean (p-value = 1.147e-05).
+
+##8.
+
+```{r}
+error <- qt(0.995,df=n-1)*std/sqrt(n)
+lowerBound <- sampleMean - error
+upperBound <- sampleMean + error
+```
+
+The 99% confidence interval is 41402.3913 to 47598.60868. It means that if we take samples from the same population multiple times and create an interval estimation in each occacion, the resulting interval may predict about 99% of the true population means. In other words, the true population mean of income will lie in between 41402 to 47598 with 99 percent confidence. 
+
+##9.
+
+```{r}
+t_stat2 <- qt(0.025, df = n-1)
+std2 <- (sampleMean - populationMean)/t_stat2*sqrt(n)
+```
+
+The smallest sample standard deviation is 24714.758.

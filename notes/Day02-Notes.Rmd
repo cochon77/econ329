@@ -1,0 +1,69 @@
+---
+title: "Day02-Notes"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+##Make a Prediction
+
+If population has a mean of 144, variance of 36, 400 times of simulations, and sample size of 25, what will the distribution of sample means look like?
+
+It is going to have a normal distribution whose means is apprximately 144 and the variance of 36/25. 
+
+```{r}
+library(MASS)
+popMean <- 144
+popVar <- 36
+size <- 25
+
+# generate data set of 10000(10000 simuations) whose mean is 144 and variance 36
+## empirical = TRUE makes the data set with mean = 144 and variance = 36
+population <- data.frame(X = mvrnorm(n = 10000, mu = popMean, Sigma = popVar, empirical = TRUE))
+```
+
+```{r}
+library(dplyr)
+population %>% summarize(x_bar = mean(X), variance = var(X))
+```
+
+Grab a sample of 25, get mean and standard deviation of the sample
+
+```{r}
+sim.out <- population %>% sample_n(25) %>% summarize(x_bar = mean(X), std = sd(X))
+```
+
+We figured out how to grab sample and calculate the mean and sd for the sample. Now we want to do this 400 times, keeping track of those sample means and sds
+
+```{r}
+for(i in 2:400) sim.out <- population %>% sample_n(25) %>% summarize(x_bar = mean(X), std = sd(X)) %>% bind_rows(sim.out)
+
+sim.func <- function (a) {
+  sim.out <- population %>% sample_n(25) %>% summarize(x_bar = mean(X), std = sd(X))
+  return(sim.out)
+}
+
+sim.out2 <- lapply(1:400, sim.func)
+```
+
+What does the distribution look like?
+
+```{r}
+library(ggplot2)
+sim.out %>% ggplot(aes(x = x_bar)) + geom_histogram()
+```
+
+###Hypothesis Testing
+
+```{r}
+sim.out <- sim.out %>% mutate(t_stat = (x_bar-popMean)/(std/sqrt(size)))
+```
+
+See whether t-stat of the samples are around 0 (maybe -/+2)
+
+```{r}
+sim.out %>% ggplot(aes(x = t_stat)) + geom_histogram()
+```
+

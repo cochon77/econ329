@@ -1,0 +1,311 @@
+---
+title: "Problem Set 5"
+author: "Colin Pi"
+subtitle: "ECON 329"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(readxl)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(lmtest)
+library(sandwich)
+library(stargazer)
+library(tibble)
+library(orcutt)
+library(erer)
+library(nlme)
+```
+
+##1.
+
+**Table 1**
+
+```{r}
+table_10.7 <- read.table("~/Documents/2017-18/ECON329/ps/ps5/Table 10.7.txt")
+table_10.7 <- add_column(table_10.7, Year = seq(1947,2000), .before = 1)
+colnames(table_10.7)[2:5] <- c("CONSUMPTION","INCOME","WEALTH","INTEREST")
+
+lm1 <- lm(log(CONSUMPTION) ~ log(INCOME) + log(WEALTH) + INTEREST, data = table_10.7)
+summary(lm1)
+```
+
+The followings are the values not listed in summary table but in the textbook table. 
+
+```{r}
+summary_lm <- data.frame(logLik <- logLik(lm1),
+                         ssr1 <- sum(lm1$residuals^2),
+                         mean1 <- mean(log(table_10.7$CONSUMPTION)),
+                         sd1 <- sd(log(table_10.7$CONSUMPTION)),
+                         dw <- dwtest(lm1, order.by = table_10.7$Year)$statistic[[1]])
+
+names(summary_lm) = c("Log likelihood","Sum Squared resid.","Mean dependent var.",
+                      "S.D. of dependent var.", "Durbin-Watson stat.")
+knitr::kable(summary_lm)
+```
+
+**Table 2**
+
+```{r}
+lm1.orc <- cochrane.orcutt(lm1)
+summary.orcutt(lm1.orc)
+```
+
+The followings are the values not listed in summary table but in the textbook table
+
+```{r}
+ar1.coef <- lm1.orc$rho
+##logLik(lm1.orc)
+ssr2 <- sum(lm1.orc$residuals^2)
+mean2 <- mean(log(table_10.7$CONSUMPTION)[-1])
+sd2 <- sd(log(table_10.7$CONSUMPTION)[-1])
+
+summary_orc <- data.frame(ar1.coef <- lm1.orc$rho,
+                          ssr2 <- sum(lm1.orc$residuals^2),
+                          mean2 <- mean(log(table_10.7$CONSUMPTION)[-1]),
+                          sd2 <- sd(log(table_10.7$CONSUMPTION)[-1]))
+
+names(summary_orc) = c("AR(1) Coefficient","Sum Squared resid.","Mean dependent var.","S.D. of dependent var.")
+knitr::kable(summary_orc)
+```
+
+**Table 3**
+
+Most of the values in table 3 are the same as table 1 except standard errors, t-Statistics, and p-value of the coefficients adjusted based on Newey-West methods.
+
+```{r, warning=FALSE}
+newey_func <- function(a) {
+  se <- data.frame(Variables = a, Estimate = coef(lm1)[a], Newey.se = sqrt(NeweyWest(lm1)[a,a]))
+  return(se)
+}
+
+newey.se <- lapply(variable.names(lm1) , newey_func) %>% bind_rows()
+newey.summary <- newey.se %>% mutate(`t-Statistics` = Estimate/Newey.se, 
+                                     Prob. = round(2 * pt(-abs(`t-Statistics`), 50), 4))
+knitr::kable(newey.summary)
+```
+
+## 2. 
+
+```{r}
+gdp <- read_excel("~/Documents/2017-18/ECON329/ps/ps5/Total GDP (US$, inflation-adjusted).xlsx")
+gdp <- gdp %>% gather(key = Year, value = GDP, 2:53)
+names(gdp)[1] <- "Country"
+us_gdp <- gdp %>% filter(Country == "United States")
+us_gdp$Year <- as.numeric(us_gdp$Year)
+```
+
+**(a)**
+
+```{r, results='asis', fig.align='center'}
+us_gdp %>% ggplot(aes(x = Year, y = GDP)) +
+  geom_point() +
+  scale_y_log10() +
+  labs(title = "GDP v. Year", y = "Total GDP (in log)")
+
+us_gdp.lm <- lm(log(GDP) ~ Year, data = us_gdp)
+stargazer(us_gdp.lm, type = "html")
+```
+
+-Constant ($\beta$~0~): If we assume that year is 0, the expected total GDP of the United States is $e^{-31.928}$ ($\approx$ 1.361 X $10^{-14}$) dollars (se = 0.805, p-value < $2 \times 10^{-16}$). 
+
+-Year ($\beta$~1~): we expect to see 3.1 percent increase in GDP for every 1 year increase, while holding other variables constant (se = 0.0004, p-value < $2 \times 10^{-16}$). 
+
+The R^2^ value is 0.991, meaning that 99.1% of variability in GDP is explained by the model. 
+
+**(b)**
+
+#### Graphical Method ####
+
+```{r, fig.align='center'}
+us_gdp.lm$std.resid <- us_gdp.lm$residuals/sqrt(sum(us_gdp.lm$residuals^2))
+ggplot(us_gdp.lm) + 
+  geom_line(aes(x=us_gdp$Year, y=.resid), linetype = 1) +
+  geom_line(aes(x=us_gdp$Year, y=us_gdp.lm$std.resid), linetype = 2) +
+  geom_hline(yintercept=0, col="red", linetype="dashed") +
+  labs(title = "Residual vs Year", x="Year", y = "Residuals")
+```
+
+From the residual plot above, we can observe a pattern of positive auto-correlation among the residuals of proximate years. (The dashed line is the standardized residuals)
+
+#### Durbin-Watson d-Test ####
+
+```{r}
+dwtest(us_gdp.lm, order.by = us_gdp$Year)
+```
+
+H~0~: true autocorrelation is 0 ($\rho$ = 0) 
+
+\newline
+
+H~1~: true autocorrelation is greater than 0 ($\rho$ > 0) 
+
+\newline
+
+d-statistics of the test is 0.25 (close to 0) with p-value smaller than $2.2\times10^{-16}$, meaning that there is a signficant evidence to reject the claim that true autocorrelation is 0. 
+
+#### Breusch-Godfrey (BG) Test ####
+
+```{r}
+bgtest(us_gdp.lm, order.by = us_gdp$Year)
+```
+
+H~0~: there is no autocorrelation among residuals ($\rho$ = 0) 
+
+\newline
+
+H~1~: there is autocorrelation among residuals ($\rho$ $\neq$ 0) 
+
+\newline
+
+From the bgtest result, we can conclude that there is a significant evidence to reject the null hypothesis that there is no autocorrelation among residuals (p-value = $3\times10^{-9}$)
+
+**(c)**
+
+```{r, results='asis'}
+newey.se2 <- coeftest(us_gdp.lm, vcov = NeweyWest(us_gdp.lm))
+stargazer(us_gdp.lm, newey.se2, 
+          model.names = FALSE,
+          dep.var.caption = "log(GDP)",
+          dep.var.labels = c("OLS","Newey-West"), type ="html")
+```
+
+As there are several notions of autocorrelation, we may expect the autocorrelation adjusted standard errors of the coefficients are bigger than those calculated using classical OLS (because OLS underestimates true standard errors by disregarding autocorrelation). And as expected, we can see Newey-West errors are bigger than Compared to the OLS standard errors. \newline
+
+$SE_{Intercept,OLS}$ = 0.805 < $SE_{Intercept,Newey}$ = 5.376 \newline
+
+$SE_{Year,OLS}$ = 0.0004 < $SE_{Year,Newey}$ = 0.003 \newline
+
+**(d)** 
+
+In that the OLS coefficient estimates of the model is not biased due to autocorrelation, we assume that there may be no signficant difference between the estimates of Year coefficients of both model, and the following result goes along with our expectation. 
+
+```{r, results='asis'}
+us_gdp.fdlm <- lm(diff(log(us_gdp$GDP), lag = 1, differences = 1) ~ 0 + diff(us_gdp$Year, lag = 1, differences = 1))
+stargazer(us_gdp.lm, us_gdp.fdlm,
+          dep.var.labels = c("log(GDP)","lag(log(GDP))"),
+          covariate.labels = c("Year", "lag(Year)"), type = "html")
+```
+
+```{r}
+dwtest(us_gdp.fdlm, order.by = us_gdp$Year[-1])
+```
+
+Like the Newey-West standard errors, the standard error the year coefficient of first difference model is bigger than that of OLS model, an indicative of the fact that classical OLS model underestimates true standard errors. The R^2^ is 0.663, meaning that 66.3% of the variability is explained by the model. The d-statistics is 1.3926 with p-value of 0.0127, indicating that some of the autocorrelation issue has been alleviated in first difference model. 
+
+**(e)**
+
+$\widehat{\rho}$ $\approx$ 1 - $\frac{DW}{2}$
+
+```{r}
+rho_hat1 <- 1 - (0.25005/2)
+```
+
+Using the d-statistics, we can get $\widehat{\rho}$ of 0.875. \newline
+
+$\widehat{\rho}$ can be estimated by fitting the regressions of residuals. 
+
+```{r, results='asis'}
+resid.lm <- lm(us_gdp.lm$residuals[-1] ~ us_gdp.lm$residuals[-52])
+stargazer(resid.lm,
+          dep.var.labels = "Residuals",
+          covariate.labels = "lag(residuals)", type = "html")
+```
+
+The coefficient estimate of the residual variable is the approximation of $\widehat{\rho}$. From the OLS Residuals, we can get $\widehat{\rho}$ of 0.881.
+
+**(f)**
+
+```{r}
+us_gdp.orc <- cochrane.orcutt(us_gdp.lm)
+summary.orcutt(us_gdp.orc)
+```
+
+-Constant ($\beta$~0~): If we assume that year is 0, the expected total GDP of the United States is $e^{-22.747}$ ($\approx$ 1.321 X $10^{-10}$) dollars (se = 3.81, p-value = $2.6 \times 10^{-7}$). 
+
+-Year ($\beta$~1~): we expect to see 2.6 percent increase in GDP for every 1 year increase, while holding other variables constant (se = 0.0019, p-value < $2.2 \times 10^{-16}$). 
+
+The R^2^ value is 0.7946, meaning that 78.46% of variability in GDP is explained by the model. \newline
+
+Like Newey-West standard errors and first difference method model, autocorrelation adjusted model using orcutt package also produces bigger standard errors than those of the OLS model, again noting that OLS model underestimates true standard errors. 
+
+## 3.
+
+```{r}
+career_woman <- read_excel("~/Documents/2017-18/ECON329/ps/ps5/Table 15_27.xls", skip = 2)
+```
+
+**(a)**
+
+```{r, results='asis'}
+career.linear <- lm(work ~ age + married + children + education, data = career_woman)
+stargazer(career.linear, type = "html")
+```
+
+-Constant ($\beta$~1~): Assuming all the variables are 0 (Age = 0, not married, no children, 0 years of education), the expected probability of a woman having a work is -0.207 (since there is no negative probability, we may not make a meaningful interpretation of the constant term) \newline
+
+-Age ($\beta$~2~): Holding other variables constant, the expected probability of a woman having a work increases by 1.03% for every 1 year increase in her age. \newline
+
+-Married ($\beta$~3~): Holding other variables constant, the expected probability of a woman having a work is 11.11% higher if a woman is married (compared to the nonmarried women) \newline
+
+-Children ($\beta$~4~): Holding other variables constant, the expected probability of a woman having a work increases by 11.15% for every one more child she has. \newline
+
+-Education ($\beta$~5~): Holding other variables constant, the expected probability of a woman having a work increases by 1.86% for every one more year of education she gets.
+
+**(b)**
+
+```{r, results='asis'}
+career.logit <- glm(work ~ age + married + children + education, data = career_woman, family = binomial, x=TRUE)
+stargazer(career.logit, type = "html")
+
+x = 0.016/(1+0.016)
+```
+
+-Constant ($\beta$~1~): Assuming all the variables are 0 (Age = 0, not married, no children, 0 years of education), the expected logit of a woman having a work is -4.159 or the odds of a woman having a work is $e^{-4.159}$ ($\approx$ 0.016). Since probability = $\frac{odds}{1+odds}$, probability when all the variables are 0 = $\frac{0.016}{1+0.016}$ = 0.0157 \newline
+
+-Age ($\beta$~2~): Holding other variables constant, we expect to see 0.058 unit increase in logit of a woman having work or $e^{0.058}$ ($\approx$ 1.06) times increase in odds of a woman having a work for every 1 year increase in age of a woman. \newline
+
+-Married ($\beta$~3~): Holding other variables constant, we expect to see 0.742 unit increase in logit of a woman having work or $e^{0.742}$ ($\approx$ 2.10) times increase in odds of a woman having work if a woman is married. \newline
+
+-Children ($\beta$~4~): Holding other variables constant, we expect to see 0.764 unit increase in logit of a woman having work or $e^{0.764}$ ($\approx$ 2.148) times increase in odds of a woman having work for every one more number of child she has. \newline 
+
+-Education ($\beta$~5~): Holding other variables constant, we expect to see 0.098 unit increase in logit of a woman having work or $e^{0.098}$ ($\approx$ 1.103) times increase in odds of a woman having work for every 1 year in number of years of education.
+
+#### Marginal Effect comparisons
+
+```{r, results='asis', warning=FALSE}
+marginal.logit = maBina(career.logit, x.mean = TRUE, rev.dum = TRUE, digits = 3)
+stargazer(career.linear, marginal.logit, model.names = FALSE, 
+          column.labels = c("LPM", "Logit"), type = "html")
+```
+
+For LPM, the marginal effect of each variable is constant for all values each variable; therefore, the coefficient estimate of each variable is the marginal effect of each variable on the probability of a woman having a job. \newline
+
+For logit function, however, the marginal effect of each variable changes depending on the value of each variable. I used the maBina Function to calculate the marginal effect of each variable at the mean of each variable (age = 36.208, education = 13.084, children = 1.64. For married variable, it indicates the marginal effect of marriage (married = 1) on probability of a woman having a job). From the table we can observe similar pattern except the intercept, but the marginal effect of each variable in general is slightly bigger in logit model than linear probability model. 
+
+## 4.
+
+**(a)** I'm going to work with Varit and Kanin
+
+**(b)** We decided to work on how investment on education influences economic growth of countries in Europe.
+
+**(c)** We are going to use annual national income growth rate as dependent variable and % of government expenditure on education for the main independent variable of our model. For controls, we are going to use governance index constructed by World Bank and Corruption Perceptions Index collected by Transparency International.
+
+**(d)** We found an article showing that the inequalities in educational levels of different regions are positively correlated with inequalities in economic growth among the regions in Western Europe. Also we could find a research paper about how difference in educational levels of workers can give arrise to difference in economic output via human capital channel, an approach based on Solow-Swan Growth Model. \newline
+
+The followings are the sources we have found so far for the research: \newline
+
+Andrés Rodríguez-Pose, Vassilis Tselios. "Inequalities in Income and Education and Regional Economic Growth in Western Europe." The Annals of Regional Science 44, no. 2 (2010): 349-75. \newline
+ 
+Anghelina, Loredana Pribac and Andrei. "Human Capital - the Effects of Education on Economic Growth within the European Union." Studi Universitatis Economics Series 25, no. 3 (August 25, 2015 2015): 35-44. \newline
+ 
+Pribac Loredana Ioana, Anghelina Andrei, Haiduc Cristian. "A Statistical Analysis of the Relationship between Education and Economic Growth in the European Union Area Having Economic Implcations." Studia Universitatis “Vasile Goldis” Arad Economic Series 23, no. 4 (April 2013): 114-23. \newline
+ 
+Sheila Slaughter, Barrett Jay Taylor. Competitive Advantage in Europe, the Us, and Canada. Higher Education, Stratification, and Workforce Development. 2016. \newline
+

@@ -1,0 +1,83 @@
+---
+title: "Day13-Notes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Autocorrelation
+
+```{r}
+set.seed(1234)
+n <- 50
+x <- rnorm(n,20,10)
+x[x<0] <- 0
+error <- rnorm(n,0,20)
+y <- 600 + .5*x - .25*x^2 + error
+mydata <- data.frame(y = y, x = x)
+```
+
+```{r}
+plot(y~x, data = mydata)
+```
+
+```{r}
+wrong.lm <- lm(y~x, data = mydata)
+summary(wrong.lm)
+```
+
+```{r}
+plot(x, resid(wrong.lm), data = mydata)
+```
+
+## Test for Autocorrelation
+
+```{r}
+require(lmtest)
+dwtest(wrong.lm, order.by = mydata$x)
+bgtest(wrong.lm, order.by = mydata$x)
+```
+
+
+## Rectify the model
+
+```{r}
+library(dplyr)
+mydata <-  mydata %>% mutate(x2 = x^2)
+correct.lm <- lm(y~x+x2, data = mydata)
+summary(correct.lm)
+```
+
+```{r}
+plot(x, resid(correct.lm), data = mydata)
+```
+
+```{r}
+dwtest(correct.lm, order.by = mydata$x)
+bgtest(correct.lm, order.by = mydata$x)
+```
+
+## Table 124
+
+```{r}
+library(readxl)
+table_124 <- read_excel("~/Documents/2017-18/ECON329/notes/Day13-files/Table 12_4.xls", skip = 3)
+lm1 <- lm(Y ~ X, data = table_124)
+summary(lm1)
+plot(table_124$Year, resid(lm1))
+dwtest(lm1, order.by = table_124$Year)
+bgtest(lm1, order.by = table_124$Year)
+```
+
+```{r}
+plot(Y ~ X, data = table_124)
+```
+
+## Autocorrelation Considered standard errors
+
+```{r}
+library(sandwich)
+NeweyWest(lm1)
+```

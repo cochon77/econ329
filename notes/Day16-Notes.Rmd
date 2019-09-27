@@ -1,0 +1,90 @@
+---
+title: "Day15-Notes"
+author: "Colin Pi"
+date: "5/17/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Pooled OLS
+
+```{r}
+table16 <- read.csv("~/Documents/2017-18/ECON329/notes/Day15-files/Table16.1.csv")
+pooled.lm <- lm(C ~ Q + PF + LF, data = table16)
+summary(pooled.lm)
+```
+
+## Fixed Effect (with different intercept based on airline)
+
+```{r}
+fixed.lm1 <- lm(C ~ Q + PF + LF + factor(I), data = table16)
+summary(fixed.lm1)
+```
+
+## Fixed Effect (with different intercept based on airlines + time effect)
+
+```{r}
+fixed.lm2 <- lm(C ~ Q + PF + LF + factor(I) + T, data = table16)
+summary(fixed.lm2)
+```
+
+## Fixed Effect (with different intercept based on time)
+
+```{r}
+fixed.lm3 <- lm(C ~ Q + PF + LF + factor(T), data = table16)
+summary(fixed.lm3)
+```
+
+## Fixed Effect (with different intercept based on time and airline)
+
+```{r}
+fixed.lm4 <- lm(C ~ Q + PF + LF + factor(I) + factor(T), data = table16)
+summary(fixed.lm4)
+```
+
+## Fixed Effect (with different intercept and effect of Q based airline)
+
+```{r}
+fixed.lm5 <- lm(C ~ Q*factor(I) + PF + LF, data = table16)
+summary(fixed.lm5)
+```
+
+## Use plm the annoying package
+
+```{r}
+library(plm)
+pooled.lm2 <- plm(C ~ Q + PF + LF, data = table16, model = "pooling", index = c("I","T"))
+summary(pooled.lm2)
+```
+
+## Within effect
+
+```{r}
+within.lm <- plm(C ~ Q + PF + LF, data = table16, model = "within", index = c("I","T"))
+summary(within.lm)
+```
+
+## Random effect!
+
+```{r}
+random.lm <- plm(C ~ Q + PF + LF, data = table16, model = "random", index = c("I","T"))
+summary(random.lm)
+```
+
+## Hausman Test
+
+```{r}
+phtest(random.lm, within.lm)
+```
+
+Reject the null hypothesis that both models are the same (meaning that fixed effects model is needed)
+
+## Breush - Pagan Lagrange Multiplier Test
+
+```{r}
+plmtest(pooled.lm2, type = c("bp"))
+```
+

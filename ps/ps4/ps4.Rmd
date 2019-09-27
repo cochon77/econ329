@@ -1,0 +1,300 @@
+---
+title: "Problem Set 4"
+author: "Colin Pi"
+subtitle: "ECON329"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(readr)
+library(stargazer)
+library(car)
+library(Quandl)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(lmtest)
+```
+
+## Question 1
+
+```{r, results='asis'}
+wageData <- suppressMessages(read_table("~/Documents/2017-18/ECON329/ps/ps4/T9.26.txt"))
+wage.lm1 <- lm(WG~SO+FE+MA, data = wageData)
+wage.lm2 <- lm(WG~MA +SO*FE, data = wageData)
+stargazer(wage.lm1, wage.lm2, type="html")
+```
+
+<center> $Y$ = $\beta$~1~ +  $\beta$~2~ X~Marry~+ $\beta$~3~ X~South~ + $\beta$~4~ X~Female~ + $\beta$~3,4~ X~South:Female~</center>
+
+<center> R^2^ = `r round(summary(wage.lm2)$r.squared, digit=3)` &nbsp; RSS = 12,974 &nbsp; df = `r wage.lm2$df` </center>
+
+-Constant($\beta$~1~) = `r round(wage.lm2$coefficient[1], digit=3)` (se = `r summary(wage.lm2)[["coefficients"]][1,2]`): expected hourly wage is around `r round(wage.lm2$coefficient[1])` dollars if a worker is neither from South and nor female. The constant value is close to that of restricted model \newline
+
+-Marital coefficient($\beta$~2~) = `r round(wage.lm2$coefficient[2], digit=3)` (se = `r round(summary(wage.lm2)[["coefficients"]][2,2], digit=3)`): all else equal, we expect to see `r round(wage.lm2$coefficient[2], digit=3)` dollars increase in hourly wage if a worker is marrided. Like in the restricted model, Marrital status variable is positively related to Wage; however, the magnitude of the effect is smaller in unrestricted than the restricted model.  \newline
+
+-Region (South) coefficient($\beta$~3~) = `r round(wage.lm2$coefficient[3], digit=3)` (se = `r round(summary(wage.lm2)[["coefficients"]][3,2], digit=3)`): all else equal, we expect to see `r round(-wage.lm2$coefficient[3], digit=3)` dollars decrease in hourly wage if a worker is from South. Like in the restricted model, Region variable is negatively related to Wage; however, the magnitude of the effect is smaller in unrestricted than the restricted model.  \newline
+
+-Gender coefficient($\beta$~3~) = `r round(wage.lm2$coefficient[4], digit=3)`  (se = `r round(summary(wage.lm2)[["coefficients"]][4,2], digit=3)`): all else equal, we expect to see `r round(-wage.lm2$coefficient[4], digit=3)` dollars decrease in hourly wage if a worker is female. Like the region varialbe, Gender variables show consistent relationship with Wage variable in both model; however, the magnitude of the effect is smaller in unrestricted than the restricted model.\newline
+
+-Region and Gender interaction coefficient($\beta$~3,4~) = `r round(wage.lm2$coefficient[5], digit=3)` (se = `r round(summary(wage.lm2)[["coefficients"]][5,2], digit=3)`): All else equal, among the workers in South, we expect to see `r round(-wage.lm2$coefficient[5], digit=3)` dollars further decrease in hourly wage if worker is female. In other words, the expected wage of the female worker from south is 2.193 dollars lower than workers neither from the South nor female. \newline
+
+-R^2^ value = `r round(summary(wage.lm2)$r.squared, digit=3)`: About `r 100*round(summary(wage.lm2)$r.squared, digit=3)`% of variability in Y is explained by the model. \newline
+
+The coefficient of the interaction term is not significant (se = `r round(summary(wage.lm2)[["coefficients"]][5,2], digit=3)`, p-value = 0.362); therefore, we may assume that it may not be necessary to introduce the interaction term. To formerly test whether the interaction term is necessary for the model, we have to conduct the joint hypothesis test on whether the interaction term is 0. 
+
+### Hypothesis Testing
+
+```{r}
+linearHypothesis(wage.lm2, "SO:FE = 0")
+```
+
+From the test whether null hypothesis that the interaction term is not zero, we can conclude that there is no significant evidence that the unrestricted model is better than the restricted model. So, the model doen't need an interaction term. 
+
+## Question 2
+
+```{r}
+DPI <- Quandl("FRED/A067RC1A027NBEA")
+names(DPI) <- c("Date", "DPI")
+Sav <- Quandl("FRED/A071RC1A027NBEA")
+names(Sav) <- c("Date", "Savings")
+savingsData <- left_join(DPI, Sav) %>% 
+  filter(Date >= "1998-01-01") %>% 
+  mutate(year_range = ifelse(Date <= "2007-01-01","98-07","08-17") %>% 
+           as.factor())
+
+relevel(savingsData$year_range, ref = "08-17")
+```
+
+**(a)**
+
+```{r, results='asis'}
+savings.lm1 <- lm(Savings ~ DPI*year_range, data = savingsData)
+savings.lm2 <- lm(log(Savings) ~ DPI*year_range, data = savingsData)
+stargazer(savings.lm1, savings.lm2, type = "html")
+
+f_stat_lin <- ((summary(savings.lm1)$r.squared)/3)/((1-summary(savings.lm1)$r.squared)/(16))
+p_value_lin <- 1-pf(f_stat_lin, 3, 16)
+f_stat_log <- ((summary(savings.lm2)$r.squared)/3)/((1-summary(savings.lm2)$r.squared)/(16))
+p_value_log <- 1-pf(f_stat_log, 3, 16)
+```
+
+The coefficients of DPI, year dummy variable, and the interaction term of both models are not significant; however, unlike the non transformed model, the constant term of log transformed model is significant (p-value < 0.01). \newline
+
+The F-test results for both models show that there are signficant relationship between Savings and at least one of the predictors in the model, but log transformed model seem to exhibit slightly more signficance than the non transformed model (p-value of F-test of non-transformed model = ${4.22\times10^{-5}}$ > p-value of F-test of non-transformed model = ${9.23\times10^{-6}}$).
+
+###MDW testing
+
+```{r, results='asis'}
+z_1 <- log(savings.lm1$fitted.values)-savings.lm2$fitted.values
+h_0.lm <- lm(savingsData$Savings ~ savingsData$DPI*savingsData$year_range + z_1)
+
+z_2 <- exp(savings.lm2$fitted.values)-savings.lm1$fitted.values
+h_1.lm <- lm(log(savingsData$Savings) ~ savingsData$DPI*savingsData$year_range + z_2)
+
+stargazer(h_0.lm, h_1.lm, type = "html", dep.var.labels = c("Savings", "log(Savings)"), covariate.labels = c("DPI", "Year98-07", "Z1", "Z2", "Year98-07:DPI"))
+```
+
+The test on null hypothesis that Savings is the linear function of DPI and year range show that there is not significant evidence to reject this claim (p-value of test of sigificance of Z~1~ coefficient = 0.514) \newline
+
+Also, the test on alternative hypothesis that log of Savings is the linear function of DPI and year range show that there is not significant evidence to reject this claim. (p-value of test of sigificance of Z~2~  coefficient = 0.591) \newline
+
+In conclusion, we have not enough evidence decide whether log-transformed or non-transformed model is better model of representing the relationship between Savings and the predictors (DPI, year effect, and the interaction of year effect on the relationship between DPI and Savings). 
+
+**(b)**
+
+The interaction terms predicts that all else equal, the expected changes in amount of savings for every 1 billion dollars increase in DPI decreases further by 0.004 percent during 2008-17 compared to 1998-2007.
+
+**(c)**
+
+```{r, fig.align='center'}
+savings.lm3_early <- lm(log(Savings) ~ DPI, data = savingsData %>% filter(year_range == "98-07"))
+savings.lm3_late <- lm(log(Savings) ~ DPI, data = savingsData %>% filter(year_range != "98-07"))
+savings.lm3 <-lm(log(Savings) ~ DPI, data = savingsData)
+
+linear <- ggplot(savings.lm3_early) + 
+  geom_point(aes(x=.fitted, y=.resid)) + 
+  geom_hline(yintercept=0, col="red", linetype="dashed") +
+  labs(title = "1998-2007", x="Fitted Values", y = "Residuals")
+
+log <- ggplot(savings.lm3_late) + 
+  geom_point(aes(x=.fitted, y=.resid)) + 
+  geom_hline(yintercept=0, col="red", linetype="dashed") +
+  labs(title = "2008-2017", x="Fitted Values", y = "Residuals")
+
+grid.arrange(linear, log, ncol=2)
+
+##Chow's Test
+
+rss_ur <- deviance(savings.lm3_early) + deviance(savings.lm3_early)
+rss_r <- deviance(savings.lm3)
+k <- 2
+n <- nrow(savingsData)
+
+f_stat <- ((rss_r-rss_ur)/k)/(rss_ur/(n-2*k))
+p_value_chow <- 1-pf(f_stat,2,n-2*k)
+```
+
+From the regressions plot above, we can observe that heteroscedasity issue has been mediated from log transformation; therefore, the variances of models from different periods are approximately equal. \newline
+
+In that heteroscedasity problem is solved by log transformation, we can more confidently rely on Chow's test. The Chow's test result tells that unrestricted model (the models divided into different periods of time) is better than the restricted model (p-value = 0.0005)
+
+## Question 3
+
+**(a)**
+
+```{r, fig.align='center', warning=FALSE, results='asis'}
+table_2.8 <- read.table("~/Documents/2017-18/ECON329/ps/ps4/Table 2.8.txt", skip = 2, sep = "", header = TRUE)
+
+food.lm <- lm(FOODEXP ~ TOTALEXP, data = table_2.8)
+
+ggplot(food.lm) + 
+  geom_histogram(aes(x=resid(food.lm),y=..density..), position="identity") + 
+  geom_density(aes(x=resid(food.lm),y=..density..)) +
+  labs(title = "Distribution of Residuals", x = "Residuals", y = "Density")
+
+stargazer(data.frame(food.lm$residuals), type = "html", rownames = )
+```
+
+Residuals in general are roughly normally distributed around 0. 
+
+**(b)**
+
+```{r, fig.align='center'}
+ggplot(food.lm) + 
+  geom_point(aes(x=TOTALEXP, y=.resid)) + 
+  geom_hline(yintercept=0, col="red", linetype="dashed") +
+  labs(title = "Residual vs Predictor Plot", x="Total Expenditures", y = "Residuals")
+```
+
+The residual plot above shows that variance of residuals gets larger as total expenditure value gets larger (fanning pattern).
+
+**(c)**
+
+```{r, results='asis'}
+park.lm <- lm(log(resid(food.lm)^2) ~ log(table_2.8$TOTALEXP))
+gj.lm <- lm(abs(resid(food.lm)) ~ table_2.8$TOTALEXP)
+stargazer(park.lm, gj.lm, type = "html", 
+          covariate.labels = c("log(TOTALEXP)", "TOTALEXP"), 
+          dep.var.labels = c("log(residual squared)","|residuals|"))
+
+white.lm <- lm(resid(food.lm)^2 ~ table_2.8$TOTALEXP + I(table_2.8$TOTALEXP)^2)
+chisq_stat <- nrow(table_2.8)*summary(white.lm)$r.squared
+p_value_white <- 1-pchisq(chisq_stat, 2)
+```
+
+All the tests tell that there is an enough evidence to reject the null hypoethesis of homoscedasity. \newline
+
+The coefficient of the `TOTALEXP` of the model fitted for Park's test is signifciant, noting that there is a statistically signficant relationship between (variance of residuals)^2^ and `TOTALEXP`(p-value = 0.02 < 0.05) \newline
+
+Also, the coefficient of the `TOTALEXP` of the model fitted for Glejser test is further signifciant than that of Park's test, suggesting that there is statistically signficant relationship between |variance of residuals| and `TOTALEXP`(p-value = 0.005 < 0.05) \newline
+
+White General Homoscedasity Test shows that there is a mild evidence to reject the null hypothesis that all the coefficients of the auxilary regression is 0 (p-value = 0.04 < 0.05), implying that there is an evidence of heteroscadasity. 
+
+**(d)**
+
+```{r, results='asis'}
+food.lm_h <- coeftest(food.lm, hccm(food.lm))
+stargazer(food.lm_h, food.lm, type = "html")
+```
+
+The heteroscedasity-consistent standard errors are smaller than those of OLS; therefore, the signficance of coefficient gets bigger if hetoroscedasity is corrected (It does worth to correct for heteroscedasity). 
+
+## Question 4
+
+```{r}
+food.lm2 <- lm(log(FOODEXP) ~ log(TOTALEXP), data = table_2.8)
+```
+
+### Residual Plot
+
+```{r, fig.align='center'}
+ggplot(food.lm2) + 
+  geom_point(aes(x=table_2.8$TOTALEXP, y=.resid)) + 
+  geom_hline(yintercept=0, col="red", linetype="dashed") +
+  labs(title = "Residual vs Predictor Plot", x="Total Expenditures", y = "Residuals")
+```
+
+Compared to the nontransformed model, we can observe that the fanning pattern is relatively alleviated in log-linear model. 
+
+### Heteroscadasity Test
+
+```{r, results='asis'}
+park.lm2 <- lm(log(resid(food.lm2)^2) ~ log(table_2.8$TOTALEXP))
+gj.lm2 <- lm(abs(resid(food.lm2)) ~ table_2.8$TOTALEXP)
+stargazer(park.lm2, gj.lm2, type = "html", 
+          covariate.labels = c("log(TOTALEXP)", "TOTALEXP"), 
+          dep.var.labels = c("log(residual squared)","|residuals|"))
+
+white.lm2 <- lm(resid(food.lm2)^2 ~ table_2.8$TOTALEXP + I(table_2.8$TOTALEXP)^2)
+chisq_stat2 <- nrow(table_2.8)*summary(white.lm2)$r.squared
+p_value2 <- 1-pchisq(chisq_stat2, 2)
+```
+
+All the tests tell that there is not enough evidence to reject the null hypoethesis of homoscedasity. \newline
+
+The coefficient of the `TOTALEXP` of the model fitted for Park's test is not signifciant, noting that there is no relationship between variance of residuals^2^ and `TOTALEXP`(p-value = 0.121 > 0.05) \newline
+
+Also, the coefficient of the `TOTALEXP` of the model fitted for Glejser test is not signifciant too, noting that there is no relationship between |variance of residuals| and `TOTALEXP`(p-value = 0.156 > 0.05) \newline
+
+White General Homoscedasity Test shows that there is a not siginificant evidence to reject the null hypothesis that all the coefficients of the auxilary regression is 0 (p-value = 0.45), implying that there is no heteroscadasity. 
+
+### Heteroscedasity Corrected Standard Errors
+
+```{r, results='asis'}
+food.lm2_h <- coeftest(food.lm2, hccm(food.lm2))
+stargazer(food.lm2_h, food.lm2, type = "html")
+```
+
+We can observe that heteroscedasity corrected standard errors are bigger than those of OLS when there is no heteroscedasity in the model; therefore, it does not worth to correct for heteroscedasity. \newline
+
+In sum, heteroscedasity problem is solved through log transformation (one of the Remedial Measures introduced in the textbook). 
+
+```{r, fig.align = 'center'}
+linear2 <- table_2.8 %>% ggplot(aes(x = TOTALEXP, y = FOODEXP)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Non-transformed", x = "Food Expenditure", y = "Total Expenditure")
+
+log2 <- table_2.8 %>% ggplot(aes(x = TOTALEXP, y = FOODEXP)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Log Tranformed", x = "Food Expenditure (log scale)", y = "Total Expenditure (log scale)")
+
+grid.arrange(linear2, log2, ncol=2)
+```
+
+As it is observed in the plots above, log transformation compressess the scales of variables and reduces the differences between the small and large values, thereby alleviating the inconsistencies in variances of residuals among different x-values (Food Expenditures). 
+
+## Question 5
+
+5. What is the predicted change in CO2 emissions per capita from an extra $1,000 in GDP per capita for a country with current GDP per capita of $10,000 for each of your two models?
+
+```{r}
+library(readxl)
+examData <- read_excel("~/Documents/2017-18/ECON329/notes/CO2emissionsdata.xlsx") %>%
+  mutate(gdpPercap_1000 = gdpPercap/1000)
+exam.lm1 <- lm(CO2percapita ~ gdpPercap_1000, data = examData)
+exam.lm2 <- lm(log(CO2percapita) ~ log(gdpPercap_1000), data = examData)
+```
+
+If we are using nontransformed model, CO~2~ emissions per capita is expected to increase about 0.365 tons from $1,000 extra increase in GDP per capita (from current level of $10,000). \newline
+
+If we are using log-linear model, \newline
+
+slope(GDP percapita = 10,000) = $\frac{dY}{dX}$ = $\beta$~2~$\frac{Y}{X}$ = $\beta$~2~$\frac{\widehat{Y}}{10}$
+
+```{r}
+yhat <- exp(predict(exam.lm2, newdata=data.frame(gdpPercap_1000=10)))
+(yhat/10)*exam.lm2$coefficients[2]
+```
+
+We may expect an increase of 0.429 tons of CO2 emissions per capita from $1,000 increase in GDP per capita.  
+

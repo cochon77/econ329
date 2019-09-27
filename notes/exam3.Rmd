@@ -1,0 +1,114 @@
+---
+title: "exam part 2"
+author: "Colin Pi"
+date: "5/24/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+exam3_data1 <- read_excel("~/Documents/2017-18/ECON329/notes/Exam3data.xlsx")
+```
+
+1. Use the stargazer package to make a table of summary statistics (min, max, mean, median, sd) for the dataset.
+
+```{r}
+library(stargazer)
+library(dplyr)
+stargazer(data.frame(exam3_data1), type = "text", median = TRUE)
+```
+
+2. Estimate and present the important results from the following regression model: 
+
+```{r}
+lm1 <- lm(MPG ~ SP + HP + WT, data = exam3_data1)
+stargazer(lm1, type = "text")
+```
+
+3. 
+
+-Constant = 189.96: The expected MPG of passenger cars is around 189.96 when horse power (HP), top speed of car (SP) and weight of car in hundred pouds (WT) are zero. The standard error of 22.529 implies that this coefficient is significantly different from zero (our estimate is over 8 standard errors away from zero) \newline
+
+-Top speed of car coefficient($\beta$~1~) = -1.272:  all else equal, we expect to see 1.272 decrease in MPG for every 1 mile increase in top speed of car. The standard error of 0.233 implies that this coefficient is significantly different from zero (our estimate is over 5 standard errors away from zero)\newline
+
+-Horse power coefficient($\beta$~2~) = 0.39:  all else equal, we expect to see 0.39 increase in MPG for every 1 unit increase in horse power of a car's engine. The standard error of 0.08 implies that this coefficient is significantly different from zero (our estimate is over 5 standard errors away from zero)\newline
+
+-Weight coefficient($\beta$~3~) = -1.903:  all else equal, we expect to see 1.9 decrease in MPG for every 1 hundred pounds increase in a car's weight. The standard error of 0.19 implies that this coefficient is significantly different from zero (our estimate is over 10 standard errors away from zero)\newline
+
+The R^2^ value is 0.8829, meaning that about 88.3% of the variability in MPG is explained by the model.
+
+4. 
+
+```{r}
+library(lmtest)
+gqtest(lm1, fraction = 4)
+```
+
+We got GQ-stat of 0.147 with p-value almost equal to 1. This means that there is no difference between variance of error of the model fitted with the first 39 data and the model fitted with the latter 38 data. So there is no heteroscedasity.
+
+5. 
+
+```{r}
+dwtest(lm1)
+```
+
+We got d-stat of 1.0237 with p-value of 4.002e-07 (extremely small). This means that there is positive autocorrelation. Positive autocorrelation means that the residuals of the observations that are close to each other tend to be exhibit similar value. 
+
+```{r}
+exam3_data2 <- read_excel("~/Documents/2017-18/ECON329/notes/CO2emissionsdata.xlsx")
+```
+
+6. need to work again
+
+```{r}
+library(plm)
+pooled.lm1 <- plm(CO2percapita ~ gdpPercap, data = exam3_data2, model = "pooling", index = c("country","year"))
+summary(pooled.lm1)
+
+fixed.lm1 <- lm(CO2percapita ~ gdpPercap + factor(country), data = exam3_data2)
+summary(fixed.lm1)
+```
+
+From the pooled and fixed effect regressions model, we can see the linear effect of gdpPercap on CO2 emissions is smaller in fixed model and in the pooled model. In that differences in country is considered as part of the linear effect, linear effect in restricted model (pooled model is overestimated).
+
+7.
+
+```{r}
+pooled.lm2 <- lm(CO2percapita ~ gdpPercap, data = exam3_data2)
+anova(pooled.lm2,fixed.lm1)
+```
+
+If we consider pooled model as misspecification, the anova test of unrestricted v. restricted gives us the solution. From the anova result with a small p-value, we can assume that fixed effect is necessary.
+
+```{r}
+phtest(pooled.lm1, fixed.lm1)
+```
+
+Hausman and bp test results also tell us that we need fixed effect model over pooled ols.
+
+```{r}
+plmtest(pooled.lm1, type = c("bp"))
+```
+
+8.
+
+```{r}
+exp(-1.302)
+```
+
+The odds ratio of getting accepted to grad school without advanced econometrics class is 0.272
+
+9. This means that the odds ratio of getting accepted to grad school without advanced econometrics class is 1.84.
+
+10.
+
+```{r}
+prob <- 1/(1+exp(-(-1.302+ 0.609)))
+prob
+```
+
+The probability of getting accepted to grad school with advanced econometrics course is 0.333.

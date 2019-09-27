@@ -1,0 +1,512 @@
+---
+title: "Problem Set 3"
+subtitle: "ECON329"
+author: "Colin Pi"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r}
+library(ggplot2)
+suppressMessages(library(dplyr))
+suppressMessages(library(stargazer))
+suppressMessages(library(GGally))
+suppressMessages(library(gridExtra))
+```
+
+##1.
+
+a. There is a 95% probability that the true mean lies between 0.1 and 0.4. (FALSE) \newline 
+b. If we were to repeat this experiment over and over, then 95% of the time our estimate of the mean will fall between 0.1 and 0.4. (FALSE) \newline
+c. If we were to repeat this experiment over and over, then we would expect that 95% of confidence intervals constructed this way would contain the range 0.1 - 0.4. (FALSE) \newline
+d. If we were to repeat this experiment over and over, then we would expect that 95% of confidence
+intervals constructed this way would contain the true mean (TRUE) \newline
+
+##2.
+
+```{r}
+flower <- read.table("~/Documents/2017-18/ECON329/ps/ps3/Table 7.6.txt", header=TRUE, quote="\"")
+```
+
+**(a)** 
+
+```{r, results='asis'}
+flower.lm <- lm(Y~X2+X3+X4+X5, data = flower)
+stargazer(flower.lm, type = "html")
+```
+
+-Constant($\alpha$~1~) = 10816.040 (se = `r round(summary(flower.lm)[["coefficients"]][1,2], digits=3)`): The expected quantity of rose sold is around 10816 dozens when price of roses, price of carnations, average weekly family disposable income, and trend variable is 0. \newline
+
+-Average wholesale price of roses coefficient($\alpha$~2~) = `r round(flower.lm$coefficient[2], digit=3)` (se = `r round(summary(flower.lm)[["coefficients"]][2,2], digit=3)`: we expect to see `r round(-flower.lm$coefficient[2], digit=3)` decrease in quantity of rose sold in dozens for every $1 increase in average wholesale price of roses.  \newline
+
+-Average wholesale price of carnations coefficient($\alpha$~3~) = `r round(flower.lm$coefficient[3], digit=3)`  (se = `r round(summary(flower.lm)[["coefficients"]][3,2], digit=3)`): we expect to see `r round(flower.lm$coefficient[3], digit=3)` increase in quantity of rose sold in dozens for every $1 increase in average wholesale price of carnations. \newline
+
+-Average weekly family disposable income coefficient($\alpha$~4~) = `r round(flower.lm$coefficient[4], digit=3)` (se = `r round(summary(flower.lm)[["coefficients"]][4,2], digit=3)`): we expect to see `r round(flower.lm$coefficient[4], digit=3)` increase in quantity of rose sold in dozens for every $1 increase in average weekly family disposable income. \newline
+
+-Trend variable coefficient($\alpha$~5~) = `r round(flower.lm$coefficient[5], digit=3)` (se = `r round(summary(flower.lm)[["coefficients"]][5,2], digit=3)`): we expect to see `r round(-flower.lm$coefficient[5], digit=3)` decrease in quantity of rose sold in dozens for every 1 unit increase in trend variable (from one quarter to the other). \newline
+
+-R^2^ value = `r round(summary(flower.lm)$r.squared, digit=3)`: About `r 100*round(summary(flower.lm)$r.squared, digit=3)`% of variability in Y is explained by the model. \newline
+
+**(b)**
+
+```{r, results='asis'}
+flower.lm2 <- lm(log(Y)~log(X2)+log(X3)+log(X4)+X5, data = flower)
+stargazer(flower.lm2, type = "html")
+```
+
+-Constant($\beta$~1~) = `r round(flower.lm2$coefficient[1], digit=3)` (se = `r summary(flower.lm2)[["coefficients"]][1,2]`): expected quantity of rose sold is around is around `r round(flower.lm2$coefficient[1])` in dozens when price of roses, price of carnations, average weekly family disposable income, and trend variable is 0.  \newline
+
+-Average wholesale price of roses coefficient($\beta$~2~) = `r round(flower.lm2$coefficient[2], digit=3)` (se = `r round(summary(flower.lm2)[["coefficients"]][2,2], digit=3)`: we expect to see `r round(flower.lm2$coefficient[2], digit=3)` percent decrease in quantity of rose sold in dozens for every 1 percent increase in average wholesale price of roses. \newline
+
+-Average wholesale price of carnations coefficient($\beta$~3~) = `r round(flower.lm2$coefficient[3], digit=3)`  (se = `r round(summary(flower.lm2)[["coefficients"]][3,2], digit=3)`): we expect to see `r round(flower.lm2$coefficient[3], digit=3)` percent increase in quantity of rose sold in dozens for every 1 percent increase in average wholesale price of carnations. \newline
+
+-Average weekly family disposable income coefficient($\beta$~4~) = `r round(flower.lm2$coefficient[4], digit=3)` (se = `r round(summary(flower.lm2)[["coefficients"]][4,2], digit=3)`): we expect to see `r round(flower.lm2$coefficient[4], digit=3)` percent increase in quantity of rose sold in dozens for every 1 percent increase in average weekly family disposable income. \newline
+
+-Trend variable coefficient($\beta$~5~) = `r round(flower.lm2$coefficient[5], digit=3)` (se = `r round(summary(flower.lm2)[["coefficients"]][5,2], digit=3)`: we expect to see `r round(flower.lm2$coefficient[5], digit=3)` percent decrease in quantity of rose sold in dozens for every 1 percent increase in trend variable (quarterly increase). \newline
+
+-R^2^ value = `r round(summary(flower.lm2)$r.squared, digit=3)`: About `r 100*round(summary(flower.lm2)$r.squared, digit=3)`% of variability in Y is explained by the model. \newline
+
+**(c)**
+
+-Assuming Rose price is negatively related to the demand of roses (higher the price, lower the quantity sold), the sign of elasticity of demand of rose price should be negative. \newline
+
+Elasticity of demand of Rose price = $\frac{\text{% Change in Quantity of Rose sold}}{\text{% Change in Price of Rose}}$ = $\beta$~2~ = `r round(flower.lm2$coefficient[2], digit=3)` (Meets the priori expectations) \newline
+
+-Assuming carnation is a subsitute good for roses, the higher the price of carnation the higher the demand for roses; therefore, the sign of elasticity of demand of carnation price should be positive. \newline
+
+Elasticity of demand of cross price (Carnation) = $\frac{\text{% Change in Quantity of Rose sold}}{\text{% Change in Price of Carnation}}$ = $\beta$~3~ = `r round(flower.lm2$coefficient[3], digit=3)` (Meets the priori expectations) \newline
+
+-Assuming roses are luxury goods, the quantity demanded of roses decreases as people's income decreaes (they are positively related); therefore, the sign of elasticity of demand of income should be positive. \newline
+
+Elasticity of demand of income = $\frac{\text{% Change in Quantity of Rose sold}}{\text{% Change in Family Disposable Income}}$ = $\beta$~4~ = `r round(flower.lm2$coefficient[4], digit=3)` (Meets the priori expectations) \newline
+
+**(d)**
+
+```{r}
+rose_elasticity <- flower.lm$coefficient[2]*(mean(flower$X2)/mean(flower$Y))
+cross_elasticity <- flower.lm$coefficient[3]*(mean(flower$X3)/mean(flower$Y))
+income_elasticity <- flower.lm$coefficient[4]*(mean(flower$X4)/mean(flower$Y))
+```
+
+
+-Elasticity of demand of Rose price = $\frac{\Delta\text{Quantity of Rose sold}}{\Delta\text{Price of Rose}}$ ${\times}$ $\frac{\text{Price of Rose}}{\text{Quantity of Rose sold}}$ 
+
+\newline
+
+= $\alpha$~2~ ${\times}$ $\frac{\text{Price of Rose}}{\text{Quantity of Rose sold}}$ 
+
+\newline
+
+= `r round(flower.lm$coefficient[2], digit=3)` ${\times}$ $\frac{\text{Price of Rose}}{\text{Quantity of Rose sold}}$
+
+\newline
+
+Elasticity of demand of Rose price if both price of Rose and Quantity of sold are in average = `r round(rose_elasticity, digits = 3)` \newline
+
+-Elasticity of demand of cross price (Carnation) = $\frac{\Delta\text{Quantity of Rose sold}}{\Delta\text{Price of Carnation}}$ ${\times}$ $\frac{\text{Price of Carnation}}{\text{Quantity of Rose sold}}$ 
+
+\newline
+
+= $\alpha$~3~ ${\times}$ $\frac{\text{Price of Carnation}}{\text{Quantity of Rose sold}}$ 
+
+\newline 
+
+= `r round(flower.lm$coefficient[3], digit=3)` ${\times}$ $\frac{\text{Price of Carnation}}{\text{Quantity of Rose sold}}$
+
+\newline
+
+Elasticity of demand of cross price if both price of Carnation and Quantity of sold are in average = `r round(cross_elasticity, digits = 3)` \newline
+
+-Elasticity of demand of income = $\frac{\Delta\text{Quantity of Rose sold}}{\Delta\text{Family Disposable Income}}$ ${\times}$ $\frac{\text{Family Disposable Income}}{\text{Quantity of Rose sold}}$ 
+
+\newline
+
+= $\alpha$~3~ ${\times}$ $\frac{\text{Family Disposable Income}}{\text{Quantity of Rose sold}}$ 
+
+\newline 
+
+= `r round(flower.lm$coefficient[4], digit=3)` ${\times}$ $\frac{\text{Family Disposable Income}}{\text{Quantity of Rose sold}}$
+
+\newline
+
+Elasticity of demand of income if both income and Quantity of sold are in average = `r round(income_elasticity, digits = 3)` \newline
+
+**(e)**
+
+The regression results for both linear models demonstrate that all predictors except the price of roses show weak relationship between the demand of roses. But the R^2^ value of non-transformed linear model is bigger than that of transformed model, noting that the variability of Y is explained more in this model than the log-transformed model. 
+
+```{r, fig.align='center'}
+ggpairs(flower, columns = 2:ncol(flower))
+```
+
+From the plot matrix above, we cannot find any nonlinear mattern that requires transformation of variables. Therefore, I will choose the non-transformed model.
+
+**(f)**
+
+**H**~0~: Elasticity of demand of own-price is unit elastic ($\beta$~2~ = 1) \newline
+
+**H**~1~: Elasticity of demand of own-price is not unit elastic ($\beta$~2~ $\neq$ 1) \newline
+
+```{r}
+n <- 16
+beta_hat <- abs(flower.lm2$coefficient[2])
+sample_std <- summary(flower.lm2)[["coefficients"]][2,2]
+beta <- 1
+k <- 5
+t_stat <- (beta_hat - beta)/(sample_std/sqrt(n))
+p_value <- 2*pt(-abs(t_stat),df=n-k)
+```
+
+There is no significant evidence to reject the null hypothesis that elasticity of demand of own-price is unit elastic (p-value = `r round(p_value, digits=3)` > 0.05)
+
+##3.
+
+```{r}
+chicken <- read.table("~/Documents/2017-18/ECON329/ps/ps3/Table 7.9.txt", header=TRUE, quote="\"")
+```
+
+**(a)** I will choose (5) because X~6~ reflects not only the price change of each substitute but also the relative consumption pattern of one meat to the other. It is the better indicator for the impact of price changes in chicken's substitute goods on chicken consumption than the raw prices of pork and beef. 
+
+**(b)** $\beta$~2~ means that we expect to see $\beta$~2~ percent change in consumption of chicken for every 1 percent change in real disposable income per capita. \newline
+$\beta$~3~ means that we expect to see $\beta$~3~ percent change in consumption of chicken for every 1 percent change in real retail price of chicken per lb.
+
+**(c)** (4) includes the effect of price change of both pork and beef in amount of chicken consumption while (2) only includes the effect of price change of pork. 
+
+**(d)** If we use (4), we assume that people equally consume (prefer) all three meats. We need to account for the changes in relative consumption those meats as substitutes for chicken to correctly reflect the price changes of both goods on chicken consumption. 
+
+```{r}
+cor_chicken <- cor(log(chicken$X4), log(chicken$X5))
+```
+
+Also, we can see that there is a multicollinearity issue rising when we use both variables into the model (cor = `r round(cor_chicken, digits=3)`). When the predictors are correlated to each other, computer finds it more difficult to distinguish the effect of changes in each variable to the response variable (and reducing the significance of relationship of both variables due to murkiness), and the inclusion of additional predictor does not make model better. 
+
+**(e)** (5) is better than (4) in that (5) solves the disparities in consumer preferences by using weights reflecting the relative consumptions of one meat to the other. Also, combining both meats solve the collinearity issue too. 
+
+**(f)**
+
+```{r, fig.align='center'}
+chicken %>% ggplot(aes(X6,Y)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  scale_x_log10()+
+  scale_y_log10()+
+  labs(title="Chicken Consumption v. Price of Pork and Beef", x="Combined Real Price of Chicken Substitute per lb. (cent, in log scale)", y="Chicken Consumption per Capita (lb., in log scale)")
+
+correlation <- cor(log(chicken$Y), log(chicken$X6))
+```
+
+From the scatter plot above, there is a positive linear relatioship between the consumption of chicken and real price of chicken substitutes (correlation coefficient = `r round(correlation, digits = 3)`). In that the the consumption of chicken is positively related to prices of pork and beef, we may conclude that pork and beef are the substitute goods of chicken. 
+
+```{r, results='asis'}
+chicken.lm <- lm(log(Y)~log(X2)+log(X3)+log(X6), data = chicken)
+stargazer(chicken.lm, type = "html")
+```
+
+However, the result I get from using the model 5 quite differet. The coefficient for composite price is negative, but the relationship is not signifcant (p-value = 0.644 > 0.05). Controlling for the other factors, such as real price of chicken and people's disposable income, we cannot clearly see that chicken and pork/beef are competitive goods to each other. 
+
+**(g)**
+
+-Constant($\beta$~1~) = `r round(chicken.lm$coefficient[1], digit=3)` (se = `r summary(chicken.lm)[["coefficients"]][1,2]`): The expected chicken consumption per capita is around `r round(chicken.lm$coefficient[1])` lb. when there people's income, price of chicken, and the combined chicken price is 0. \newline
+
+-Real disposable income coefficient($\beta$~2~) = `r round(chicken.lm$coefficient[2], digit=3)` (se = `r round(summary(chicken.lm)[["coefficients"]][2,2], digit=3)`: we expect to see `r round(chicken.lm$coefficient[2], digit=3)` percent increase in consumption of chicken for every 1 percent increase in real disposable income per capita. \newline
+
+-Real price of chicken coefficient($\beta$~3~) = `r round(chicken.lm$coefficient[3], digit=3)`  (se = `r round(summary(chicken.lm)[["coefficients"]][3,2], digit=3)`): we expect to see `r round(-chicken.lm$coefficient[3], digit=3)` percent decrease in consumption of chicken for every 1 percent increase in real retail price of chicken per lb. \newline
+
+-Combined real price of chicken subsitute($\beta$~4~) = `r round(chicken.lm$coefficient[4], digit=3)` (se = `r round(summary(chicken.lm)[["coefficients"]][4,2], digit=3)`): we expect to see `r round(-chicken.lm$coefficient[4], digit=3)` percent decrease in consumption of chicken for every 1 percent increase in combined real retail price of chicken per lb. \newline
+
+-R^2^ value = `r round(summary(chicken.lm)$r.squared, digit=3)`: About `r 100*round(summary(chicken.lm)$r.squared, digit=3)`% of variability in Y is explained by the model. \newline
+
+-Adjusted R^2^ value = `r round(summary(chicken.lm)$adj.r.squared, digit=3)`: Considering the number of predictors introduced in the model, about `r 100*round(summary(chicken.lm)$adj.r.squared, digit=3)`% of variability in Y is explained by the model.\newline
+
+-Modified R^2^ value = `r round((1-4)/23*summary(chicken.lm)$r.squared, digit=3)`
+
+**(h)**
+
+```{r, results='asis'}
+chicken.lm2 <- lm(log(Y)~log(X2)+log(X3)+log(X4), data = chicken)
+stargazer(chicken.lm2, type = "html")
+```
+
+If we fit the "wrong" model, we can see 1) the coefficient of the terms indicating the price of subsitute good have been changed (from -.061 to 0.107), 2) standard errors have been changed (0.130 to 0.088), 3) R^2^ value 0.980 to 0.982, and 4) the tntercept terms have been changed (from 2.03 to 2.125). In conclusion, the "wrong" model seems better then the true model (smaller standard error of coefficient term and bigger R^2^ value). 
+
+##4.
+
+```{r, fig.align='center', warning=FALSE}
+set.seed(7)
+suppressPackageStartupMessages(library(MASS))
+suppressPackageStartupMessages(library(tidyverse))
+library(broom)
+child <- read.table("~/Documents/2017-18/ECON329/ps/ps3/Table 6.4.txt", header=TRUE, quote="\"")
+
+sim.func <- function (a) {
+  error <- mvrnorm(n = 64, mu = 0, Sigma = 42, 
+                      empirical = TRUE) %>% data.frame()
+  names(error) <- "error"
+  modeloutput <- lm(newCM ~ FLR + PGNP, data = cbind(child,error) %>% mutate(newCM = 262 - 0.006*PGNP - 2.4*FLR + error)) %>% tidy
+  return(modeloutput)
+}
+
+sim.out <- lapply(1:10, sim.func) %>% bind_rows()
+
+sim.out %>% filter(term == "(Intercept)") %>% ggplot(aes(x = estimate)) + geom_histogram() + labs(title="Intercept")
+sim.out %>% filter(term == "PGNP") %>% ggplot(aes(x = estimate)) + geom_histogram() + labs(title="PGNP")
+sim.out %>% filter(term == "FLR") %>% ggplot(aes(x = estimate)) + geom_histogram() + labs(title="FLR")
+
+avg_intercept <- (sim.out %>% filter(term == "(Intercept)"))$estimate %>% mean()
+avg_PGNP <- (sim.out %>% filter(term == "PGNP"))$estimate %>% mean()
+avg_FLR <- (sim.out %>% filter(term == "FLR"))$estimate %>% mean()
+```
+
+Average of the intercept = `r round(avg_intercept, digits = 3)` $\approx$ 262 \newline
+
+Average of the PGNP coefficient  = `r round(avg_PGNP, digits = 3)` = -0.006 \newline
+
+Average of the FLR coefficient = `r round(avg_FLR, digits = 3)` $\approx$ -2.4 \newline
+
+If we perform the simulation 1,000 times...
+
+```{r, fig.align='center', warning=FALSE}
+set.seed(7)
+sim.out2 <- lapply(1:1000, sim.func) %>% bind_rows()
+
+sim.out2 %>% filter(term == "(Intercept)") %>% ggplot(aes(x = estimate)) + geom_histogram() + labs(title="Intercept")
+sim.out2 %>% filter(term == "PGNP") %>% ggplot(aes(x = estimate)) + geom_histogram() + labs(title="PGNP")
+sim.out2 %>% filter(term == "FLR") %>% ggplot(aes(x = estimate)) + geom_histogram() + labs(title="FLR")
+
+avg_intercept2 <- (sim.out2 %>% filter(term == "(Intercept)"))$estimate %>% mean()
+avg_PGNP2 <- (sim.out2 %>% filter(term == "PGNP"))$estimate %>% mean()
+avg_FLR2 <- (sim.out2 %>% filter(term == "FLR"))$estimate %>% mean()
+```
+
+We can observe that the coefficients are normally distributed around the mean when we simulate for 1,000 times (which we can't see when we only simulate for 10 times) \newline
+
+Average of the intercept = `r round(avg_intercept2, digits = 3)` $\approx$ 262 \newline
+
+Average of the PGNP coefficient  = `r round(avg_PGNP2, digits = 3)` = -0.006 \newline
+
+Average of the FLR coefficient = `r round(avg_FLR2, digits = 3)` $\approx$ -2.4 \newline
+
+##5.
+
+```{r, warning=FALSE}
+dpi <- read.csv("~/Documents/2017-18/ECON329/ps/ps3/DPI.csv")
+savings <- read.csv("~/Documents/2017-18/ECON329/ps/ps3/PMSAVE.csv")
+final_data <- inner_join(dpi,savings, by="DATE")
+names(final_data)[3] = "SAVINGS"
+final_data <- final_data %>% mutate(SavingsR = SAVINGS/DPI)
+```
+
+**(a)**
+
+I'm going to use Disposable Personal Income(DPI) for personal disposable income and Personal Saving(PMSAVE) for the Savings data to replicate the textbook exercise.
+
+**(b)**
+
+```{r, fig.align='center'}
+data_70_81 <- final_data %>% filter(DATE > 1970 & DATE < 1982)
+data_82_95 <- final_data %>% filter(DATE > 1982 & DATE < 1995)
+
+plot_70_81 <- data_70_81 %>% ggplot(aes(x = DPI, y = SAVINGS)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "1970-81", x = "Income", y = "Savings")
+plot_82_95 <- data_82_95 %>% ggplot(aes(x = DPI, y = SAVINGS)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "1982-95", x = "Income", y = "Savings")
+grid.arrange(plot_70_81, plot_82_95, ncol=2)
+```
+
+**(c)**
+
+```{r, fig.align='center'}
+data_70 <- final_data %>% filter(DATE > 1970)
+data_95 <- final_data %>% filter(DATE > 1995)
+
+plot_70 <- data_70 %>% ggplot(aes(x = DPI, y = SAVINGS)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "1970~", x = "Income", y = "Savings")
+plot_95 <- data_95 %>% ggplot(aes(x = DPI, y = SAVINGS)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "1995~", x = "Income", y = "Savings")
+grid.arrange(plot_70, plot_95, ncol=2)
+```
+
+**(d)**
+
+```{r}
+model_70_81 <- lm(SAVINGS ~ DPI, data = data_70_81)
+model_82_95 <- lm(SAVINGS ~ DPI, data = data_82_95)
+data_70_95 <- final_data %>% filter(DATE > 1970 & DATE < 1995)
+model_70_95 <- lm(SAVINGS ~ DPI, data = data_70_95)
+```
+
+#####Model 1 (1970-81):#####
+
+```{r, results='asis'}
+stargazer(model_70_81, type="html")
+```
+
+<center> $\widehat{Y}_t$ = `r round(model_70_81$coefficient[1], digits=3)` + `r round(model_70_81$coefficient[2], digits=3)` X~t~ </center>
+
+<center> t = (`r round(summary(model_70_81)[["coefficients"]][1,2], digits=3)`) (`r round(summary(model_70_81)[["coefficients"]][2,2], digits=3)`) </center>
+
+<center> R^2^ = `r round(summary(model_70_81)$r.squared, digit=3)` &nbsp; RSS = `r round(deviance(model_70_81), digits = 3)` &nbsp; df = `r model_70_81$df` </center>
+
+The expected personal savings is around `r round(model_70_81$coefficient[1], digits=3)` billions dollars when personal disposable income is 0. \newline
+
+We expect to see `r round(model_70_81$coefficient[2], digits=3)` billion dollars increase in personal savings for every 1 billion dollars increase in personal disposable income. \newline
+
+About `r 100*round(summary(model_70_81)$r.squared, digit=3)`% of variability in Y is explained by the model. 
+
+#####Model 2 (1982-95):#####
+
+```{r, results='asis'}
+stargazer(model_82_95, type="html")
+```
+
+<center> $\widehat{Y}_t$ = `r round(model_82_95$coefficient[1], digits=3)` + `r round(model_82_95$coefficient[2], digits=3)` X~t~ </center> \newline
+
+<center> t = (`r round(summary(model_82_95)[["coefficients"]][1,2], digits=3)`) (`r round(summary(model_82_95)[["coefficients"]][2,2], digits=3)`) </center>
+
+<center> R^2^ = `r round(summary(model_82_95)$r.squared, digit=3)` &nbsp; RSS = 97052.807 &nbsp; df = `r model_82_95$df` </center>
+
+The expected personal savings is around `r round(model_82_95$coefficient[1], digits=3)` billions dollars when personal disposable income is 0. \newline
+
+We expect to see `r round(model_82_95$coefficient[2], digits=3)` billion dollars increase in personal savings for every 1 billion dollars increase in personal disposable income. \newline
+
+About `r 100*round(summary(model_82_95)$r.squared, digit=3)`% of variability in Y is explained by the model.
+
+#####Model 3 (1970-95):#####
+
+```{r, results='asis'}
+stargazer(model_70_95, type="html")
+```
+
+<center> $\widehat{Y}_t$ = `r round(model_70_95$coefficient[1], digits=3)` + `r round(model_70_95$coefficient[2], digits=3)` X~t~ </center> 
+
+<center> t = (`r round(summary(model_70_95)[["coefficients"]][1,2], digits=3)`) (`r round(summary(model_70_95)[["coefficients"]][2,2], digits=3)`) </center>
+
+<center> R^2^ = `r round(summary(model_70_95)$r.squared, digit=3)` &nbsp; RSS = 141031.191 &nbsp; df = `r model_70_95$df` </center>
+
+The expected personal savings is around `r round(model_70_95$coefficient[1], digits=3)` billions dollars when personal disposable income is 0. \newline
+
+We expect to see `r round(model_70_95$coefficient[2], digits=3)` billion dollars increase in personal savings for every 1 billion dollars increase in personal disposable income. \newline
+
+About `r 100*round(summary(model_70_95)$r.squared, digit=3)`% of variability in Y is explained by the model. 
+
+**(e)**
+
+```{r}
+model_95 <- lm(SAVINGS ~ DPI, data = data_95)
+model_70 <- lm(SAVINGS ~ DPI, data = data_70)
+```
+
+#####Model 4 (1995~):#####
+
+```{r, results='asis'}
+stargazer(model_95, type="html")
+```
+
+<center> $\widehat{Y}_t$ = `r round(model_95$coefficient[1], digits=3)` + `r round(model_95$coefficient[2], digits=3)` X~t~ </center> 
+
+<center> t = (`r round(summary(model_95)[["coefficients"]][1,2], digits=3)`) (`r round(summary(model_95)[["coefficients"]][2,2], digits=3)`) </center>
+
+<center> R^2^ = `r round(summary(model_95)$r.squared, digit=3)` &nbsp; RSS = 141031.191 &nbsp; df = `r model_95$df` </center>
+
+The expected personal savings is around `r round(model_95$coefficient[1], digits=3)` billions dollars when personal disposable income is 0. \newline
+
+We expect to see `r round(model_95$coefficient[2], digits=3)` billion dollars increase in personal savings for every 1 billion dollars increase in personal disposable income. \newline
+
+About `r 100*round(summary(model_95)$r.squared, digit=3)`% of variability in Y is explained by the model. 
+
+#####Revised Model 3 (1970~):#####
+
+```{r, results='asis'}
+stargazer(model_70, type="html")
+```
+
+<center> $\widehat{Y}_t$ = `r round(model_70$coefficient[1], digits=3)` + `r round(model_70$coefficient[2], digits=3)` X~t~ </center> 
+
+<center> t = (`r round(summary(model_70)[["coefficients"]][1,2], digits=3)`) (`r round(summary(model_70)[["coefficients"]][2,2], digits=3)`) </center>
+
+<center> R^2^ = `r round(summary(model_70)$r.squared, digit=3)` &nbsp; RSS = 141031.191 &nbsp; df = `r model_70$df` </center>
+
+The expected personal savings is around `r round(model_70$coefficient[1], digits=3)` billions dollars when personal disposable income is 0. \newline
+
+We expect to see `r round(model_70$coefficient[2], digits=3)` billion dollars increase in personal savings for every 1 billion dollars increase in personal disposable income. \newline
+
+About `r 100*round(summary(model_70)$r.squared, digit=3)`% of variability in Y is explained by the model. 
+
+**(f)**
+
+```{r}
+data_98_08 <- final_data %>% filter(DATE > 1998 & DATE < 2008)
+data_08_18 <- final_data %>% filter(DATE > 2008 & DATE < 2018)
+data_98_18 <- final_data %>% filter(DATE > 1998 & DATE < 2018)
+
+model_98_08 <- lm(SAVINGS ~ DPI, data = data_98_08)
+model_08_18 <- lm(SAVINGS ~ DPI, data = data_08_18)
+model_98_18 <- lm(SAVINGS ~ DPI, data = data_98_18)
+
+rss_ur <- deviance(model_98_08) + deviance(model_08_18)
+rss_r <- deviance(model_98_18)
+k <- 2
+n <- nrow(data_98_08) + nrow(data_08_18)
+
+f_stat <- ((rss_r-rss_ur)/k)/(rss_ur/(n-2*k))
+p_value_chow <- 1-pf(f_stat,2,n-2*k)
+```
+
+Based on the Chow's test, we may assume that unrestricted model is better than restricted model (p-value = 0.0003 < 0.05)
+
+**(g)**
+
+```{r}
+var_98_08 <- deviance(model_98_08)/df.residual(model_98_08)
+var_08_18 <- deviance(model_08_18)/df.residual(model_08_18)
+f_stat_var <- var_98_08/var_08_18
+p_value_var <- 1-pf(f_stat_var, df.residual(model_98_08), df.residual(model_08_18))
+```
+
+The p-value of the assumption test is  0.000005, meaning that there is a significant evidence to reject the null hypothesis that the residual standard errors of both models are the same. Therefore, it does not seem to meet the assumption better than the textbook example.
+
+**Optional Problems**
+
+```{r, fig.align='center'}
+data_98_08 %>% ggplot(aes(x = DPI)) +
+  geom_point(aes(y = 100*SavingsR, color = "Savings Rate")) +
+  geom_smooth(aes(y = 100*SavingsR, color = "Savings Rate"), method = "lm") +
+  scale_y_continuous(sec.axis = sec_axis(~.*500/10, name = "Savings (in Bill. $)")) +
+  geom_point(aes(y = SAVINGS*10/500, color = "Savings")) +
+  geom_smooth(aes(y = SAVINGS*10/500, color = "Savings"), method = "lm") +
+  labs(title = "1998~2008", x = "Income", y = "Savings Rate (%)") +
+  theme(legend.title=element_blank())
+```
+
+```{r, fig.align='center'}
+data_08_18 %>% ggplot(aes(x = DPI)) +
+  geom_point(aes(y = 100*SavingsR, color = "Savings Rate")) +
+  geom_smooth(aes(y = 100*SavingsR, color = "Savings Rate"), method = "lm") +
+  scale_y_continuous(sec.axis = sec_axis(~.*500/10, name = "Savings (in Bill. $)")) +
+  geom_point(aes(y = SAVINGS*10/500, color = "Savings")) +
+  geom_smooth(aes(y = SAVINGS*10/500, color = "Savings"), method = "lm") +
+  labs(title = "2008~", x = "Income", y = "Savings Rate (%)") +
+  theme(legend.title=element_blank())
+```
+
+```{r, fig.align='center'}
+data_98_18 %>% ggplot(aes(x = DPI)) +
+  geom_point(aes(y = 100*SavingsR, color = "Savings Rate")) +
+  geom_smooth(aes(y = 100*SavingsR, color = "Savings Rate"), method = "lm") +
+  scale_y_continuous(sec.axis = sec_axis(~.*500/10, name = "Savings (in Bill. $)")) +
+  geom_point(aes(y = SAVINGS*10/500, color = "Savings")) +
+  geom_smooth(aes(y = SAVINGS*10/500, color = "Savings"), method = "lm") +
+  labs(title = "1998~", x = "Income", y = "Savings Rate (%)") +
+  theme(legend.title=element_blank())
+```
